@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+
+	"github.com/joho/godotenv"
 )
 
-const projectDir = "dev-forum_user"
+const projectDir = "dev-forum_article"
 
 func loadEnv() {
 	re := regexp.MustCompile(`^(.*` + projectDir + `)`)

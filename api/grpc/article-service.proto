@@ -1,0 +1,41 @@
+syntax = "proto3";
+option go_package="./pb";
+
+
+service ArticleService {
+    rpc Create(CreateArticleRequest) returns (CreateArticleResponse) {}
+    rpc Update(UpdateArticleRequest) returns (UpdateArticleResponse) {}
+    rpc Get(GetArticleRequest) returns (GetArticleResponse) {}
+    rpc GetStream(GetArticleRequest) returns (stream Article) {}
+} 
+
+message Article {
+    int32 id = 1;
+    int32 user_id = 2;
+    string title = 4;
+    string body = 3;
+}
+
+message CreateArticleRequest {
+    Article article = 1;
+}
+
+message CreateArticleResponse {
+    bool is_success = 1;
+}
+
+message UpdateArticleRequest {
+    Article article = 1;
+}
+
+message UpdateArticleResponse {
+    bool is_success = 1;
+}
+
+message GetArticleRequest {
+    string article_id = 1;
+}
+
+message GetArticleResponse {
+    Article article = 1;
+}

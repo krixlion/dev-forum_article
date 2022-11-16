@@ -2,12 +2,9 @@ version: '3'
 
 services:
 
-  my-go-service:
-    container_name: $(AGGREGATE_ID)
+  dev-form_article:
     image: acim/go-reflex
     environment:
       - RACE_DETECTOR=1
-    depends_on:
-      - user_write_DB
     volumes:
-      - ./path/to/service/files:/app
+      - .:/app

@@ -1,10 +1,9 @@
 package service
 
 import (
-	"context"
-	"eventstore/internal/pb"
-	"eventstore/internal/pkg/server"
-	"eventstore/pkg/log"
+	"github.com/krixlion/dev-forum_article/pkg/grpc/pb"
+	"github.com/krixlion/dev-forum_article/pkg/log"
+	"github.com/krixlion/dev-forum_article/pkg/server"
 
 	"flag"
 	"fmt"
@@ -30,16 +29,16 @@ func Run() {
 	}
 
 	grpcServer := grpc.NewServer()
-	eventstore := server.MakeEventStoreServer()
+	eventstore := server.Server{}
 
 	defer func() {
-		err := eventstore.Close(context.Background())
-		if err != nil {
-			log.PrintLn("msg", "failed to gracefully close connections", "err", err)
-		}
+		// err := eventstore.Close(context.Background())
+		// if err != nil {
+		// 	log.PrintLn("msg", "failed to gracefully close connections", "err", err)
+		// }
 	}()
 
-	pb.RegisterEventStoreServer(grpcServer, eventstore)
+	pb.RegisterArticleServiceServer(grpcServer, eventstore)
 
 	log.PrintLn("transport", "net/tcp", "msg", "listening")
 	err = grpcServer.Serve(lis)
