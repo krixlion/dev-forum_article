@@ -11,13 +11,14 @@ build:
 	go build
 
 run-dev:
-	docker compose --env-file .env -f docker-compose.dev.yml up -d
+	docker compose --env-file .env build
+	docker compose --env-file .env up -d
 
 run-local:
 	go run cmd/main.go
 
 test:
-	docker compose -f docker-compose.dev.yml exec dev-form_article go test -race ./...
+	docker compose exec dev-form_article go test -race ./...
 
 push-image: # param: version
 	docker build deployment -t krixlion/$(PROJECT_NAME)_$(AGGREGATE_ID):$(version)

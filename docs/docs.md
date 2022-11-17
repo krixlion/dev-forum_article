@@ -33,8 +33,8 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [int32](#int32) |  |  |
-| user_id | [int32](#int32) |  |  |
+| id | [string](#string) |  |  |
+| user_id | [string](#string) |  |  |
 | title | [string](#string) |  |  |
 | body | [string](#string) |  |  |
 

@@ -6,10 +6,15 @@ import (
 	"regexp"
 
 	"github.com/joho/godotenv"
+	"github.com/krixlion/dev-forum_article/cmd/service"
 )
 
-const projectDir = "dev-forum_article"
+// Hardcoded root dir name.
+const projectDir = "app"
 
+// LoadEnv assumes the root directory name is "app" and
+// the .env file is located in the root directory.
+// It panics if it cannot find the file named ".env" in the root dir.
 func loadEnv() {
 	re := regexp.MustCompile(`^(.*` + projectDir + `)`)
 	cwd, _ := os.Getwd()
@@ -23,4 +28,5 @@ func loadEnv() {
 
 func main() {
 	loadEnv()
+	service.Run()
 }

@@ -1,0 +1,20 @@
+version: '3'
+
+networks:
+  dev-form:
+
+services:
+
+  article:
+    container_name: debug
+    image: krixlion/go-reflex-dlv:1.19.3
+    environment:
+      - BUILD_ARGS=cmd/main.go
+    volumes:
+      - .:/app
+    networks:
+      - dev-form
+    ports:
+      - 50051:50051
+      # debug port
+      - 2345:2345

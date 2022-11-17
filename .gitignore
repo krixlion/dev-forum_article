@@ -1,5 +1,5 @@
 *.env
-*.vscode
+# *.vscode
 
 # Binaries for programs and plugins
 *.exe
@@ -10,6 +10,8 @@
 
 # Test binary, built with `go test -c`
 *.test
+__debug_bin
+main
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

@@ -1,13 +1,14 @@
 package service
 
 import (
-	"github.com/krixlion/dev-forum_article/pkg/grpc/pb"
-	"github.com/krixlion/dev-forum_article/pkg/log"
-	"github.com/krixlion/dev-forum_article/pkg/server"
-
+	"context"
 	"flag"
 	"fmt"
 	"net"
+
+	"github.com/krixlion/dev-forum_article/pkg/grpc/pb"
+	"github.com/krixlion/dev-forum_article/pkg/grpc/server"
+	"github.com/krixlion/dev-forum_article/pkg/log"
 
 	"google.golang.org/grpc"
 )
@@ -25,23 +26,23 @@ func init() {
 func Run() {
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
-		log.PrintLn("transport", "net/tcp", "msg", "failed listening", "err", err)
+		log.PrintLn("transport", "grpc", "msg", "failed to create a listener", "err", err)
 	}
 
-	grpcServer := grpc.NewServer()
-	eventstore := server.Server{}
+	grpcSrv := grpc.NewServer()
+	srv := server.ArticleServer{}
 
 	defer func() {
-		// err := eventstore.Close(context.Background())
-		// if err != nil {
-		// 	log.PrintLn("msg", "failed to gracefully close connections", "err", err)
-		// }
+		err := srv.Close(context.Background())
+		if err != nil {
+			log.PrintLn("msg", "failed to gracefully close connections", "err", err)
+		}
 	}()
 
-	pb.RegisterArticleServiceServer(grpcServer, eventstore)
+	pb.RegisterArticleServiceServer(grpcSrv, srv)
 
-	log.PrintLn("transport", "net/tcp", "msg", "listening")
-	err = grpcServer.Serve(lis)
+	log.PrintLn("transport", "grpc", "msg", "listening")
+	err = grpcSrv.Serve(lis)
 	if err != nil {
 		log.PrintLn("transport", "grpc", "msg", "failed to serve", "err", err)
 	}

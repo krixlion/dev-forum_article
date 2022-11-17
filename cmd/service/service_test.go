@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/krixlion/dev-forum_article/pkg/grpc/pb"
-	"github.com/krixlion/dev-forum_article/pkg/server"
+	"github.com/krixlion/dev-forum_article/pkg/grpc/server"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -22,7 +23,7 @@ func init() {
 	// great for testing across whole infrastructure
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
-	server := server.Server{}
+	server := server.ArticleServer{}
 	pb.RegisterArticleServiceServer(s, server)
 	go func() {
 		if err := s.Serve(lis); err != nil {
