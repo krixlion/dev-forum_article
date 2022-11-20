@@ -12,6 +12,13 @@
             "port": 2345,
             "host": "127.0.0.1",
             "showLog": true,
+            "debugAdapter": "dlv-dap",
+            "substitutePath": [
+              {
+                "from": "${workspaceFolder}",
+                "to": "/app",
+              },
+            ]
         }
     ]
 }
