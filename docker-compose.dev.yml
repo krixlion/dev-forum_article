@@ -6,14 +6,19 @@ services:
     container_name: "${PROJECT_NAME}_${AGGREGATE_ID}-${SERVICE_ENV}"
     image: krixlion/go-reflex-dlv:${GO_VERSION}
     environment:
-      - BUILD_ARGS=${BUILD_ARGS}
-      - RUN_ARGS=${RUN_ARGS}
+      - BUILD_ARGS=-race -gcflags=”all=-Nl” cmd/main.go
+      - RUN_ARGS=-p ${GRPC_PORT}
       - DEBUG_PORT=${DEBUG_PORT}
+      # - DELVE_ARGS=--continue
     volumes:
       - .:/app
     ports:
       - ${GRPC_PORT}:${GRPC_PORT}
       - ${DEBUG_PORT}:${DEBUG_PORT}
+    depends_on:
+      - eventstore
+      - redis
+      - rabbitmq
 
   eventstore:
     image: eventstore/eventstore:22.10.0-buster-slim
@@ -29,14 +34,34 @@ services:
     ports:
     # HTTP, gRPC port
       - "${DB_WRITE_PORT}:${DB_WRITE_PORT}"
+    restart: unless-stopped
     volumes:
-      - type: volume
-        source: eventstore-volume-data
-        target: /var/lib/eventstore
-      - type: volume
-        source: eventstore-volume-logs
-        target: /var/log/eventstore
+        - eventstore-data:/var/lib/eventstore
+
+  redis:
+    image: redis:7.0.5-alpine
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf --port ${DB_READ_PORT}
+    ports:
+      - ${DB_READ_PORT}:${DB_READ_PORT}
+    volumes:
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
+      - redis-data:/data
+        
+  rabbitmq:
+    image: rabbitmq:3.11.3-alpine
+    restart: unless-stopped
+    ports:
+    # AMQP port
+    - 5672:5672
+    # HTTP port
+    - 15672:15672
+    volumes:
+    - rabbitmq-data:/var/lib/rabbitmq/
+    - rabbitmq-logs:/var/log/rabbitmq
 
 volumes:
-  eventstore-volume-data:
-  eventstore-volume-logs:
+  eventstore-data:
+  redis-data:
+  rabbitmq-logs:
+  rabbitmq-data:
