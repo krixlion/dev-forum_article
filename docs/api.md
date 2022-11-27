@@ -9,6 +9,7 @@
     - [CreateArticleResponse](#-CreateArticleResponse)
     - [GetArticleRequest](#-GetArticleRequest)
     - [GetArticleResponse](#-GetArticleResponse)
+    - [GetArticlesRequest](#-GetArticlesRequest)
     - [UpdateArticleRequest](#-UpdateArticleRequest)
     - [UpdateArticleResponse](#-UpdateArticleResponse)
   
@@ -103,6 +104,22 @@
 
 
 
+<a name="-GetArticlesRequest"></a>
+
+### GetArticlesRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| offset | [string](#string) |  |  |
+| limit | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="-UpdateArticleRequest"></a>
 
 ### UpdateArticleRequest
@@ -149,7 +166,7 @@
 | Create | [.CreateArticleRequest](#CreateArticleRequest) | [.CreateArticleResponse](#CreateArticleResponse) |  |
 | Update | [.UpdateArticleRequest](#UpdateArticleRequest) | [.UpdateArticleResponse](#UpdateArticleResponse) |  |
 | Get | [.GetArticleRequest](#GetArticleRequest) | [.GetArticleResponse](#GetArticleResponse) |  |
-| GetStream | [.GetArticleRequest](#GetArticleRequest) | [.Article](#Article) stream |  |
+| GetStream | [.GetArticlesRequest](#GetArticlesRequest) | [.Article](#Article) stream |  |
 
  
 

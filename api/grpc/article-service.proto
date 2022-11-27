@@ -6,7 +6,7 @@ service ArticleService {
     rpc Create(CreateArticleRequest) returns (CreateArticleResponse) {}
     rpc Update(UpdateArticleRequest) returns (UpdateArticleResponse) {}
     rpc Get(GetArticleRequest) returns (GetArticleResponse) {}
-    rpc GetStream(GetArticleRequest) returns (stream Article) {}
+    rpc GetStream(GetArticlesRequest) returns (stream Article) {}
 } 
 
 message Article {
@@ -34,6 +34,11 @@ message UpdateArticleResponse {
 
 message GetArticleRequest {
     string article_id = 1;
+}
+
+message GetArticlesRequest {
+    string offset = 1;
+    string limit = 2;
 }
 
 message GetArticleResponse {
