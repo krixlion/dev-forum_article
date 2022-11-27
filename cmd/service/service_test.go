@@ -6,8 +6,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/krixlion/dev-forum_article/pkg/grpc/pb"
-	"github.com/krixlion/dev-forum_article/pkg/grpc/server"
+	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
+	"github.com/krixlion/dev-forum_article/pkg/net/grpc/server"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

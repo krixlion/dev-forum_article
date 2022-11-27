@@ -25,7 +25,7 @@ type ArticleServiceClient interface {
 	Create(ctx context.Context, in *CreateArticleRequest, opts ...grpc.CallOption) (*CreateArticleResponse, error)
 	Update(ctx context.Context, in *UpdateArticleRequest, opts ...grpc.CallOption) (*UpdateArticleResponse, error)
 	Get(ctx context.Context, in *GetArticleRequest, opts ...grpc.CallOption) (*GetArticleResponse, error)
-	GetStream(ctx context.Context, in *GetArticleRequest, opts ...grpc.CallOption) (ArticleService_GetStreamClient, error)
+	GetStream(ctx context.Context, in *GetArticlesRequest, opts ...grpc.CallOption) (ArticleService_GetStreamClient, error)
 }
 
 type articleServiceClient struct {
@@ -63,7 +63,7 @@ func (c *articleServiceClient) Get(ctx context.Context, in *GetArticleRequest, o
 	return out, nil
 }
 
-func (c *articleServiceClient) GetStream(ctx context.Context, in *GetArticleRequest, opts ...grpc.CallOption) (ArticleService_GetStreamClient, error) {
+func (c *articleServiceClient) GetStream(ctx context.Context, in *GetArticlesRequest, opts ...grpc.CallOption) (ArticleService_GetStreamClient, error) {
 	stream, err := c.cc.NewStream(ctx, &ArticleService_ServiceDesc.Streams[0], "/ArticleService/GetStream", opts...)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ type ArticleServiceServer interface {
 	Create(context.Context, *CreateArticleRequest) (*CreateArticleResponse, error)
 	Update(context.Context, *UpdateArticleRequest) (*UpdateArticleResponse, error)
 	Get(context.Context, *GetArticleRequest) (*GetArticleResponse, error)
-	GetStream(*GetArticleRequest, ArticleService_GetStreamServer) error
+	GetStream(*GetArticlesRequest, ArticleService_GetStreamServer) error
 	mustEmbedUnimplementedArticleServiceServer()
 }
 
@@ -119,7 +119,7 @@ func (UnimplementedArticleServiceServer) Update(context.Context, *UpdateArticleR
 func (UnimplementedArticleServiceServer) Get(context.Context, *GetArticleRequest) (*GetArticleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedArticleServiceServer) GetStream(*GetArticleRequest, ArticleService_GetStreamServer) error {
+func (UnimplementedArticleServiceServer) GetStream(*GetArticlesRequest, ArticleService_GetStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetStream not implemented")
 }
 func (UnimplementedArticleServiceServer) mustEmbedUnimplementedArticleServiceServer() {}
@@ -190,7 +190,7 @@ func _ArticleService_Get_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _ArticleService_GetStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetArticleRequest)
+	m := new(GetArticlesRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}

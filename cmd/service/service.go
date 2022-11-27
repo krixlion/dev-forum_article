@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/krixlion/dev-forum_article/pkg/grpc/pb"
-	"github.com/krixlion/dev-forum_article/pkg/grpc/server"
 	"github.com/krixlion/dev-forum_article/pkg/log"
+	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
+	"github.com/krixlion/dev-forum_article/pkg/net/grpc/server"
 
 	"google.golang.org/grpc"
 )
@@ -18,7 +18,7 @@ var (
 )
 
 func init() {
-	portFlag := flag.Int("port", 50051, "The server port")
+	portFlag := flag.Int("p", 50051, "The gRPC server port")
 	flag.Parse()
 	port = *portFlag
 }
@@ -30,7 +30,7 @@ func Run() {
 	}
 
 	grpcSrv := grpc.NewServer()
-	srv := server.ArticleServer{}
+	srv := server.MakeArticleServer()
 
 	defer func() {
 		err := srv.Close(context.Background())
@@ -41,9 +41,13 @@ func Run() {
 
 	pb.RegisterArticleServiceServer(grpcSrv, srv)
 
-	log.PrintLn("transport", "grpc", "msg", "listening")
+	log.PrintLn("transport", "grpc", "msg", "listening", "port", port)
 	err = grpcSrv.Serve(lis)
 	if err != nil {
 		log.PrintLn("transport", "grpc", "msg", "failed to serve", "err", err)
 	}
+}
+
+func Close() {
+
 }
