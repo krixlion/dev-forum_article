@@ -5,10 +5,12 @@ import (
 	"os"
 
 	"github.com/krixlion/dev-forum_article/pkg/entity"
+	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 	"github.com/krixlion/dev-forum_article/pkg/storage"
 	"github.com/krixlion/dev-forum_article/pkg/storage/cmd"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
+	"go.uber.org/zap"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,8 +18,10 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	query storage.Reader
-	cmd   storage.Writer
+	query        storage.Reader
+	cmd          storage.Writer
+	eventHandler event.Handler
+	logger       *zap.Logger
 }
 
 // MakeArticleServer reads DB connection data from
@@ -40,16 +44,25 @@ func MakeArticleServer() ArticleServer {
 	}
 }
 
-func (s ArticleServer) Close(context.Context) error {
+func (s ArticleServer) Close() error {
 	panic("Unimplemented Close method")
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
 	article := entity.MakeArticleFromPb(req.GetArticle())
-
 	err := s.cmd.Create(ctx, article)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	event := event.Event{
+		Type: event.Created,
+	}
+
+	err = s.eventHandler.Publish(ctx, event)
+	if err != nil {
+		// rollback(event)
+		return nil, status.Errorf(codes.Internal, "Failed to create article.")
 	}
 
 	return nil, nil
@@ -67,8 +80,20 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 }
 
 func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.GetArticleResponse, error) {
-	s.query.Get(ctx, req.GetArticleId())
-	return nil, nil
+	article, err := s.query.Get(ctx, req.GetArticleId())
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get article: %v", err)
+	}
+
+	return &pb.GetArticleResponse{
+		Article: &pb.Article{
+			Id:     article.Id(),
+			UserId: article.UserId(),
+			Title:  article.Title,
+			Body:   article.Body,
+		},
+	}, err
 }
 
 func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleService_GetStreamServer) error {
@@ -79,10 +104,6 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 	}
 
 	for _, v := range articles {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-
 		select {
 		case <-ctx.Done():
 			return nil

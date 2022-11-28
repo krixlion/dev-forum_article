@@ -3,85 +3,65 @@ package rabbitmq
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/krixlion/dev-forum_article/pkg/event"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func (mq *RabbitMQ) Publish(ctx context.Context, timeout time.Duration, msg Message) error {
-	ch := mq.channel()
+const (
+	createdEvent = ".event.created"
+	deletedEvent = ".event.deleted"
+	updatedEvent = ".event.updated"
+)
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
+func (mq *RabbitMQ) Publish(ctx context.Context, e event.Event) error {
+	msg, err := messageFromEvent(e)
+	if err != nil {
+		return err
+	}
+
+	return mq.publish(ctx, msg)
+}
+
+func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
+	ch := mq.channel()
 	defer ch.Close()
 
 	_, err := mq.breaker.Execute(func() (interface{}, error) {
-		err := ch.PublishWithContext(ctx,
-			msg.Exchange,   // exchange
-			msg.RoutingKey, // routing key
-			false,          // mandatory
-			false,          // immediate
-			amqp.Publishing{
-				ContentType: "text/plain",
-				Body:        []byte(msg.Body),
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
-	})
-
-	return err
-}
-
-func (mq *RabbitMQ) PublishOnQueue(ctx context.Context, timeout time.Duration, msg Message, queueName string) (err error) {
-	ch := mq.channel()
-
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	defer ch.Close()
-
-	q, err := mq.breaker.Execute(func() (interface{}, error) {
-		return ch.QueueDeclare(
-			queueName, // our queue name
-			false,     // durable
-			false,     // delete when unused
-			false,     // exclusive
-			false,     // no-wait
-			nil,       // arguments
+		return nil, ch.ExchangeDeclare(
+			msg.ExchangeName, // name
+			msg.ExchangeType, // type
+			true,             // durable
+			false,            // auto-deleted
+			false,            // internal
+			false,            // no-wait
+			nil,              // arguments
 		)
 	})
 	if err != nil {
 		return err
 	}
-	queue := q.(amqp.Queue)
 
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-
-	// Publishes a message onto the queue.
 	_, err = mq.breaker.Execute(func() (interface{}, error) {
-		err := ch.PublishWithContext(ctx,
-			msg.Exchange, // exchange
-			queue.Name,   // routing key
-			false,        // mandatory
-			false,        // immediate
+		return nil, ch.PublishWithContext(ctx,
+			msg.ExchangeName, // exchange
+			msg.RoutingKey,   // routing key
+			false,            // mandatory
+			false,            // immediate
 			amqp.Publishing{
-				ContentType: "text/plain",
-				Body:        []byte(msg.Body),
+				ContentType: string(msg.ContentType),
+				Body:        msg.Body,
 			},
 		)
-		return nil, err
 	})
-
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// RetryLater appends a message to the RetryQueue and throws an error if the queue is full.
-func (mq *RabbitMQ) RetryLater(msg Message) error {
+// RetryEnqueue appends a message to the RetryQueue and throws an error if the queue is full.
+func (mq *RabbitMQ) retryEnqueue(msg Message) error {
 	select {
 	case mq.retryC <- msg:
 		return nil
@@ -90,7 +70,7 @@ func (mq *RabbitMQ) RetryLater(msg Message) error {
 	}
 }
 
-func (mq *RabbitMQ) Subscribe(ctx context.Context, consumer string, r Route) (<-chan event.Event, error) {
+func (mq *RabbitMQ) subscribe(ctx context.Context, consumer string, r Route) (<-chan Message, error) {
 	ch := mq.channel()
 
 	defer ch.Close()
@@ -120,11 +100,11 @@ func (mq *RabbitMQ) Subscribe(ctx context.Context, consumer string, r Route) (<-
 
 	_, err = mq.breaker.Execute(func() (interface{}, error) {
 		return nil, ch.QueueBind(
-			queue.Name,   // queue name
-			r.RoutingKey, // routing key
-			r.Exchange,   // exchange
-			false,        // Immidiate
-			nil,          // Additional args
+			queue.Name,     // queue name
+			r.RoutingKey,   // routing key
+			r.ExchangeName, // exchange
+			false,          // Immidiate
+			nil,            // Additional args
 		)
 	})
 	if err != nil {
@@ -150,23 +130,24 @@ func (mq *RabbitMQ) Subscribe(ctx context.Context, consumer string, r Route) (<-
 	}
 
 	deliveryC := c.(<-chan amqp.Delivery)
-	events := make(chan event.Event)
+	msgs := make(chan Message)
 
 	go func() {
 		for delivery := range deliveryC {
 			delivery.Ack(false)
-			events <- event.Event{
-				Type:      delivery.Type,
-				Body:      string(delivery.Body),
-				Timestamp: delivery.Timestamp,
+			msgs <- Message{
+				Body:        delivery.Body,
+				ContentType: ContentType(delivery.ContentType),
+				Timestamp:   delivery.Timestamp,
+				Route:       r,
 			}
 			if ctx.Err() != nil {
-				close(events)
+				close(msgs)
 				ch.Close()
 				return
 			}
 		}
 	}()
 
-	return events, nil
+	return msgs, nil
 }

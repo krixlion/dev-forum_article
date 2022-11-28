@@ -2,28 +2,31 @@ package event
 
 import (
 	"context"
-
-	amqp "github.com/rabbitmq/amqp091-go"
+	"io"
 )
 
 type Handler interface {
-	Close()
 	Consumer
 	Publisher
 	Subscriber
+	io.Closer
 }
 
 type Consumer interface {
-	Consume(ctx context.Context) (<-chan interface{}, error)
-	ConsumeOnQueue(ctx context.Context) (<-chan Event, error)
+	Consume(context.Context) (<-chan Event, error)
+	ConsumeOnQueue(context.Context) (<-chan Event, error)
 }
 
 type Publisher interface {
-	Publish(ctx context.Context, msg []byte, exchangeName string, exchangeType string) error
-	PublishOnQueue(ctx context.Context, msg []byte, queueName string) error
+	// Exchanges and queues should be maintained internally depending on the type of event.
+	Publish(context.Context, Event) error
+	PublishOnQueue(context.Context, Event) error
 }
 
 type Subscriber interface {
-	Subscribe(ctx context.Context, exchangeName string, exchangeType string, consumerName string, handlerFunc func(amqp.Delivery)) error
-	SubscribeToQueue(ctx context.Context, queueName string, consumerName string, handlerFunc func(amqp.Delivery)) error
+	Subscribe(context.Context, HandlerFunc) error
+	SubscribeToQueue(context.Context, HandlerFunc) error
 }
+
+// HandleFunc is registered for a subscriber and is invoked for each received event.
+type HandlerFunc func(Event) error
