@@ -6,6 +6,10 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 )
 
+func (db DB) Close() error {
+	panic("Close not implemented")
+}
+
 func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
 	panic("Get not implemented")
 }
