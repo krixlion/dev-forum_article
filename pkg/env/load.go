@@ -8,8 +8,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Load assumes the root directory name is "app" and
-// the .env file is located in the root directory.
+// Load assumes the .env file is located in the root directory.
 // It panics if it cannot find the file named ".env" in the root dir.
 func Load(projectDir string) {
 	re := regexp.MustCompile(`^(.*` + projectDir + `)`)

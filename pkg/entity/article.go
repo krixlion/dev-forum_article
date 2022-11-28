@@ -4,9 +4,8 @@ import "github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 
 // This service's entity.
 type Article struct {
-	id string
-	// Author's ID.
-	userId string
+	id     string
+	userId string // Author's ID.
 	Title  string
 	Body   string
 }

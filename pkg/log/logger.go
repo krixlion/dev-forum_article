@@ -1,22 +1,18 @@
 package log
 
 import (
-	"os"
-
-	"github.com/go-kit/log"
+	"go.uber.org/zap"
 )
 
-var logger log.Logger = MakeLogger()
-
-func MakeLogger() log.Logger {
-	logger := log.NewLogfmtLogger(os.Stderr)
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	logger = log.With(logger, "caller", log.DefaultCaller)
-
-	return logger
+// MakeZapLogger returns an error on hardware error.
+func MakeZapLogger() (*zap.SugaredLogger, error) {
+	logger, err := zap.NewProduction(zap.AddCaller(), zap.AddCallerSkip(1))
+	sugar := logger.Sugar()
+	defer sugar.Sync()
+	return sugar, err
 }
 
-func PrintLn(keyvals ...interface{}) error {
-	err := logger.Log(keyvals...)
-	return err
+func PrintLn(msg string, keyvals ...interface{}) {
+	logger, _ := MakeZapLogger()
+	logger.Infow(msg, keyvals...)
 }
