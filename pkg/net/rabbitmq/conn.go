@@ -17,7 +17,7 @@ func DefaultBreakerSettings() gobreaker.Settings {
 	return gobreaker.Settings{
 		MaxRequests: 20,
 		Interval:    time.Second * 30,
-		Timeout:     time.Second * 5,
+		Timeout:     time.Second * 2,
 		IsSuccessful: func(err error) bool {
 			if err != context.Canceled && err != context.DeadlineExceeded {
 				return false
@@ -25,14 +25,6 @@ func DefaultBreakerSettings() gobreaker.Settings {
 			return true
 		},
 	}
-}
-
-func (mq *RabbitMQ) setUpChannel() (*amqp.Channel, error) {
-	ch, err := mq.connection.Channel()
-	mq.mu.Lock()
-	mq.errC = ch.NotifyClose(make(chan *amqp.Error, 16))
-	defer mq.mu.Unlock()
-	return ch, err
 }
 
 func errorType(code int) int {
@@ -69,6 +61,6 @@ func isConnectionError(err *amqp.Error) bool {
 	return errorType(err.Code) == ConnectionError
 }
 
-// func isChannelError(err *amqp.Error) bool {
-// 	return errorType(err.Code) == ChannelError
-// }
+func isChannelError(err *amqp.Error) bool {
+	return errorType(err.Code) == ChannelError
+}

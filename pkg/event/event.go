@@ -17,4 +17,5 @@ type EventType string
 const (
 	Created EventType = "created"
 	Deleted EventType = "deleted"
+	Updated EventType = "updated"
 )

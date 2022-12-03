@@ -15,6 +15,14 @@ const (
 	ContentTypeText ContentType = "text/plain"
 )
 
+const DefaultConsumer = "article-service"
+
+const (
+	createdEvent = ".event.created"
+	deletedEvent = ".event.deleted"
+	updatedEvent = ".event.updated"
+)
+
 type Message struct {
 	Body        []byte
 	ContentType ContentType
@@ -31,32 +39,43 @@ type Route struct {
 	QueueName    string
 }
 
-// MessageFromEvent returns a message suitable for pub/sub methods and
+// makeMessageFromEvent returns a message suitable for pub/sub methods and
 // a non-nil error if the event could not be marshaled into JSON.
-func messageFromEvent(e event.Event) (Message, error) {
+func makeMessageFromEvent(e event.Event) (Message, error) {
 	body, err := json.Marshal(e.Body)
 	if err != nil {
 		return Message{}, err
 	}
 
-	rKey := routingKeyFromEvent(e)
-	return Message{
+	msg := Message{
 		Body:        body,
 		ContentType: ContentTypeJson,
-		Route: Route{
-			ExchangeName: e.Entity,
-			ExchangeType: amqp.ExchangeTopic,
-			RoutingKey:   rKey,
-		},
-	}, nil
+		Route:       makeRouteFromEvent(e),
+	}
+
+	return msg, nil
 }
 
-func routingKeyFromEvent(e event.Event) (rKey string) {
-	switch e.Type {
+func routingKeyFromEvent(entity string, t event.EventType) (rKey string) {
+	switch t {
 	case event.Created:
-		rKey = e.Entity + createdEvent
+		rKey = entity + createdEvent
 	case event.Deleted:
-		rKey = e.Entity + deletedEvent
+		rKey = entity + deletedEvent
+	case event.Updated:
+		rKey = entity + updatedEvent
 	}
 	return
+}
+
+func makeRouteFromEvent(e event.Event) Route {
+	rKey := routingKeyFromEvent(e.Entity, e.Type)
+
+	r := Route{
+		ExchangeName: e.Entity,
+		ExchangeType: amqp.ExchangeTopic,
+		RoutingKey:   rKey,
+	}
+
+	return r
 }

@@ -24,9 +24,9 @@ type Publisher interface {
 }
 
 type Subscriber interface {
-	Subscribe(context.Context, HandlerFunc) error
+	Subscribe(context.Context, EventType, HandlerFunc) error
 	SubscribeToQueue(context.Context, HandlerFunc) error
 }
 
 // HandleFunc is registered for a subscriber and is invoked for each received event.
-type HandlerFunc func(Event) error
+type HandlerFunc func(context.Context, Event) error

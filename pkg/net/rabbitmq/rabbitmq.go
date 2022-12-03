@@ -1,7 +1,7 @@
 package rabbitmq
 
 import (
-	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -44,20 +44,8 @@ func NewRabbitMQ(url string, queueSize int, maxFailures uint32, reconnectInterva
 	}
 }
 
-func (mq *RabbitMQ) Run() {
-	err := mq.dial()
-	if err != nil {
-		mq.logger.Infow("Failed to connect to RabbitMQ", "err", err)
-	}
-
-	mq.setUpChannel()
-	if err != nil {
-		mq.logger.Infow("Failed to set up a channel", "err", err)
-	}
-
-	go mq.handleConnectionErrors()
-	go mq.handleChannelRequests()
-	go mq.runRetryQueue()
+func (mq *RabbitMQ) Run() error {
+	return nil
 }
 
 // HandleChannelRequests is meant to be run in a seperate goroutine.
@@ -91,23 +79,6 @@ func (mq *RabbitMQ) handleConnectionErrors() {
 	}
 }
 
-// RunRetryQueue is meant to be run in a seperate goroutine.
-func (mq *RabbitMQ) runRetryQueue() {
-	for msg := range mq.retryC {
-		for {
-			_, err := mq.breaker.Execute(func() (interface{}, error) {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				return nil, mq.publish(ctx, msg)
-			})
-			if err == nil {
-				break
-			}
-			mq.logger.Infow("Failed to publish a message", "err", err)
-		}
-	}
-}
-
 // Dial renews current TCP connection.
 func (mq *RabbitMQ) dial() error {
 	conn, err := mq.breaker.Execute(func() (interface{}, error) {
@@ -137,4 +108,22 @@ func (mq *RabbitMQ) Close() {
 			mq.logger.Infow("Failed to close active connections", "err", err.Error())
 		}
 	}
+}
+
+// RetryEnqueue appends a message to the RetryQueue and throws an error if the queue is full.
+func (mq *RabbitMQ) retryEnqueue(msg Message) error {
+	select {
+	case mq.retryC <- msg:
+		return nil
+	default:
+		return fmt.Errorf("retry queue is full")
+	}
+}
+
+func (mq *RabbitMQ) setUpChannel() (*amqp.Channel, error) {
+	ch, err := mq.connection.Channel()
+	mq.mu.Lock()
+	mq.errC = ch.NotifyClose(make(chan *amqp.Error, 16))
+	defer mq.mu.Unlock()
+	return ch, err
 }
