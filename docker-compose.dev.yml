@@ -6,7 +6,7 @@ services:
     container_name: "${PROJECT_NAME}_${AGGREGATE_ID}-${SERVICE_ENV}"
     image: krixlion/go-reflex-dlv:${GO_VERSION}
     environment:
-      - BUILD_ARGS=-race -gcflags=”all=-Nl” cmd/main.go
+      - BUILD_ARGS=-race cmd/main.go
       - RUN_ARGS=-p ${GRPC_PORT}
       - DEBUG_PORT=${DEBUG_PORT}
       # - DELVE_ARGS=--continue
@@ -41,11 +41,11 @@ services:
   redis:
     image: redis:7.0.5-alpine
     restart: unless-stopped
-    command: redis-server /usr/local/etc/redis/redis.conf --port ${DB_READ_PORT}
+    command: redis-server  --port ${DB_READ_PORT} #/usr/local/etc/redis/redis.conf
     ports:
       - ${DB_READ_PORT}:${DB_READ_PORT}
     volumes:
-      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
       - redis-data:/data
         
   rabbitmq:
