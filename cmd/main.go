@@ -24,6 +24,7 @@ const projectDir = "app"
 
 func main() {
 	env.Load(projectDir)
+
 	service := service.NewArticleService(port)
 	service.Run()
 
@@ -38,7 +39,7 @@ func main() {
 		if err != nil {
 			log.Println("Failed to shutdown service")
 		} else {
-			log.Println("Service Exited Properly")
+			log.Println("Service exitedp properly")
 		}
 	}()
 }

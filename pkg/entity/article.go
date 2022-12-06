@@ -2,28 +2,14 @@ package entity
 
 import "github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 
+const ArticleName = "article"
+
 // This service's entity.
 type Article struct {
-	id     string
-	userId string // Author's ID.
-	Title  string
-	Body   string
-}
-
-func (v *Article) UserId() string {
-	if v != nil {
-		return v.userId
-	}
-
-	return ""
-}
-
-func (v *Article) Id() string {
-	if v != nil {
-		return v.id
-	}
-
-	return ""
+	Id     string `redis:"id"`
+	UserId string `redis:"user_id"` // Author's ID.
+	Title  string `redis:"title"`
+	Body   string `redis:"body"`
 }
 
 func MakeArticleFromPb(v *pb.Article) Article {
@@ -33,8 +19,8 @@ func MakeArticleFromPb(v *pb.Article) Article {
 	body := v.GetBody()
 
 	return Article{
-		id:     id,
-		userId: userId,
+		Id:     id,
+		UserId: userId,
 		Title:  title,
 		Body:   body,
 	}

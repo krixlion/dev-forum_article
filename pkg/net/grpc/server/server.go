@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/event"
@@ -26,7 +27,6 @@ type ArticleServer struct {
 
 // MakeArticleServer reads DB connection data from
 // the environment using os.Getenv() and loads it to the DB struct.
-// This struct is then returned.
 func MakeArticleServer() ArticleServer {
 	cmd_port := os.Getenv("DB_WRITE_PORT")
 	cmd_host := os.Getenv("DB_WRITE_HOST")
@@ -35,17 +35,17 @@ func MakeArticleServer() ArticleServer {
 
 	query_port := os.Getenv("DB_READ_PORT")
 	query_host := os.Getenv("DB_READ_HOST")
-	query_user := os.Getenv("DB_READ_USER")
 	query_pass := os.Getenv("DB_READ_PASS")
 
 	return ArticleServer{
 		cmd:   cmd.MakeDB(cmd_port, cmd_host, cmd_user, cmd_pass),
-		query: query.MakeDB(query_port, query_host, query_user, query_pass),
+		query: query.MakeDB(query_host, query_port, query_pass),
 	}
 }
 
 func (s ArticleServer) Close() error {
-	panic("Unimplemented Close method")
+	s.query.Close()
+	return s.cmd.Close()
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
@@ -56,11 +56,15 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	}
 
 	event := event.Event{
-		Type: event.Created,
+		Type:      event.Created,
+		Entity:    entity.ArticleName,
+		Body:      article.Body,
+		Timestamp: time.Now(),
 	}
 
 	err = s.eventHandler.Publish(ctx, event)
 	if err != nil {
+		// TODO:
 		// rollback(event)
 		return nil, status.Errorf(codes.Internal, "Failed to create article.")
 	}
@@ -88,8 +92,8 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 
 	return &pb.GetArticleResponse{
 		Article: &pb.Article{
-			Id:     article.Id(),
-			UserId: article.UserId(),
+			Id:     article.Id,
+			UserId: article.UserId,
 			Title:  article.Title,
 			Body:   article.Body,
 		},
@@ -109,11 +113,12 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 			return nil
 		default:
 			article := pb.Article{
-				Id:     v.Id(),
-				UserId: v.UserId(),
+				Id:     v.Id,
+				UserId: v.UserId,
 				Title:  v.Title,
 				Body:   v.Body,
 			}
+
 			err := stream.Send(&article)
 			if err != nil {
 				return err
