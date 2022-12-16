@@ -7,6 +7,8 @@
     - [Article](#-Article)
     - [CreateArticleRequest](#-CreateArticleRequest)
     - [CreateArticleResponse](#-CreateArticleResponse)
+    - [DeleteArticleRequest](#-DeleteArticleRequest)
+    - [DeleteArticleResponse](#-DeleteArticleResponse)
     - [GetArticleRequest](#-GetArticleRequest)
     - [GetArticleResponse](#-GetArticleResponse)
     - [GetArticlesRequest](#-GetArticlesRequest)
@@ -62,6 +64,36 @@
 <a name="-CreateArticleResponse"></a>
 
 ### CreateArticleResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| is_success | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="-DeleteArticleRequest"></a>
+
+### DeleteArticleRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="-DeleteArticleResponse"></a>
+
+### DeleteArticleResponse
 
 
 

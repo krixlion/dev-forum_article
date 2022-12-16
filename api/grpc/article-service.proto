@@ -32,6 +32,14 @@ message UpdateArticleResponse {
     bool is_success = 1;
 }
 
+message DeleteArticleRequest {
+    string id = 1;
+}
+
+message DeleteArticleResponse {
+    bool is_success = 1;
+}
+
 message GetArticleRequest {
     string article_id = 1;
 }
