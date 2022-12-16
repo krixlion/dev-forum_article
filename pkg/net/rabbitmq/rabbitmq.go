@@ -79,10 +79,10 @@ func (mq *RabbitMQ) runPublishQueue(ctx context.Context) error {
 // handleChannelReads is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleChannelReads() {
 	for req := range mq.readChannel {
-		channel, err := mq.setUpChannel()
+		channel, err := mq.connection.Channel()
 		if err != nil {
 			mq.logger.Log("Failed opening a new channel", "err", err)
-			close(req)
+			req <- nil
 			continue
 		}
 		req <- channel
@@ -113,6 +113,7 @@ func (mq *RabbitMQ) dial() error {
 	if err != nil {
 		return err
 	}
+
 	conn, err := amqp.Dial(mq.url)
 	if err != nil {
 		if isConnectionError(err.(*amqp.Error)) {
@@ -128,6 +129,7 @@ func (mq *RabbitMQ) dial() error {
 	mq.mutex.Lock()
 	defer mq.mutex.Unlock()
 	mq.connection = conn
+
 	return nil
 }
 
@@ -136,8 +138,8 @@ func (mq *RabbitMQ) channel() *amqp.Channel {
 		ask := make(chan *amqp.Channel)
 		mq.readChannel <- ask
 
-		// For range over channel terminates automatically when the channel closes.
-		for channel := range ask {
+		channel := <-ask
+		if channel != nil {
 			return channel
 		}
 
@@ -153,12 +155,4 @@ func (mq *RabbitMQ) Close() {
 			mq.logger.Log("Failed to close active connections", "err", err.Error())
 		}
 	}
-}
-
-func (mq *RabbitMQ) setUpChannel() (*amqp.Channel, error) {
-	ch, err := mq.connection.Channel()
-	mq.mutex.Lock()
-	defer mq.mutex.Unlock()
-	mq.connection.NotifyClose(mq.notifyConnClose)
-	return ch, err
 }

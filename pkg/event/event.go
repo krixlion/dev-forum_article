@@ -8,7 +8,7 @@ import (
 type Event struct {
 	Entity    string    `json:"entity,omitempty"`
 	Type      EventType `json:"type,omitempty"`
-	Body      []byte    `json:"body,omitempty"` // Must be marshaled JSON.
+	Body      []byte    `json:"body,omitempty"` // Must be marshaled to JSON.
 	Timestamp time.Time `json:"timestamp,omitempty"`
 }
 

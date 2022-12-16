@@ -8,6 +8,7 @@ type Logger interface {
 	Log(msg string, keyvals ...interface{})
 }
 
+// Log implements Logger
 type log struct {
 	logger *zap.SugaredLogger
 }
