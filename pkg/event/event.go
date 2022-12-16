@@ -8,14 +8,14 @@ import (
 type Event struct {
 	Entity    string    `json:"entity,omitempty"`
 	Type      EventType `json:"type,omitempty"`
-	Body      string    `json:"body,omitempty"`
+	Body      []byte    `json:"body,omitempty"` // Must be marshaled JSON.
 	Timestamp time.Time `json:"timestamp,omitempty"`
 }
 
 type EventType string
 
 const (
-	Created EventType = "created"
-	Deleted EventType = "deleted"
-	Updated EventType = "updated"
+	ArticleCreated EventType = "article-created"
+	ArticleDeleted EventType = "article-deleted"
+	ArticleUpdated EventType = "article-updated"
 )

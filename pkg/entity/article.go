@@ -2,7 +2,7 @@ package entity
 
 import "github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 
-const ArticleName = "article"
+const ArticleEntityName = "article"
 
 // This service's entity.
 type Article struct {
