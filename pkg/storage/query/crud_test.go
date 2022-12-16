@@ -57,8 +57,8 @@ func TestCRUDOnSimpleData(t *testing.T) {
 		},
 	}
 
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, testCase := range testCases {
+		t.Run(testCase.desc, func(t *testing.T) {
 			if err := db.Create(context.Background(), mockArticle); err != nil {
 				t.Errorf("Failed to Create article: %v", err)
 			}

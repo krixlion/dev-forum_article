@@ -5,7 +5,14 @@ import (
 	"io"
 
 	"github.com/krixlion/dev-forum_article/pkg/entity"
+	"github.com/krixlion/dev-forum_article/pkg/event"
 )
+
+type Storage interface {
+	Reader
+	Writer
+	CatchUp(ctx context.Context) error
+}
 
 type Reader interface {
 	io.Closer
@@ -17,4 +24,10 @@ type Writer interface {
 	io.Closer
 	Create(context.Context, entity.Article) error
 	Update(context.Context, entity.Article) error
+	Delete(ctx context.Context, id string) error
+}
+
+type Eventstore interface {
+	Writer
+	event.Subscriber
 }

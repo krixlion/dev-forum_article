@@ -4,16 +4,14 @@ import (
 	"fmt"
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
-	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/log"
-	"go.uber.org/zap"
 )
 
 type DB struct {
-	logger *zap.SugaredLogger
+	logger log.Logger
 	client *esdb.Client
-	eh     event.Handler
-	url    string
+	// eventHandler event.Handler
+	url string
 }
 
 func formatConnString(port, host, user, pass string) string {
@@ -29,12 +27,12 @@ func MakeDB(port, host, user, pass string) DB {
 	}
 
 	client, _ := esdb.NewClient(settings)
-	logger, _ := log.MakeZapLogger()
+	logger, _ := log.NewLogger()
 
 	return DB{
 		url:    url,
 		client: client,
-		// eh:     mq.MakeSession(),
+		// eventHandler:     rabbitmq.NewRabbitMQ()
 		logger: logger,
 	}
 }
