@@ -10,6 +10,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.5.0
 	github.com/sony/gobreaker v0.5.0
 	go.uber.org/zap v1.23.0
+	golang.org/x/sync v0.1.0
 	google.golang.org/grpc v1.50.1
 	google.golang.org/protobuf v1.28.1
 )

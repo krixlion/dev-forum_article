@@ -1,70 +1,98 @@
 package rabbitmq
 
 import (
-	"fmt"
+	"context"
 	"sync"
 	"time"
 
 	"github.com/krixlion/dev-forum_article/pkg/log"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sony/gobreaker"
-	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
-	ArticleServiceEntity = "article"
-	// ArticleServiceExchangeName = "article"
-	// ArticleServiceExchangeKind = "topic"
+// ArticleServiceExchangeName = "article"
+// ArticleServiceExchangeKind = "topic"
 )
 
 type RabbitMQ struct {
 	MaxFailures       uint32
 	ReconnectInterval time.Duration
 
-	mu         sync.RWMutex            // Mutex protecting connection when reconnecting.
-	url        string                  // Connection string to RabbitMQ broker.
-	errC       chan *amqp.Error        // Channel to watch for errors from broker in order to renew the connection.
-	retryC     chan Message            // Queue for messages waiting to be republished.
-	readC      chan chan *amqp.Channel // Access channel for accessing the RabbitMQ Channel in a thread-safe way.
-	connection *amqp.Connection
-	breaker    *gobreaker.CircuitBreaker
-	logger     *zap.SugaredLogger
+	connection      *amqp.Connection
+	mutex           sync.RWMutex            // Mutex protecting connection during reconnecting.
+	url             string                  // Connection string to RabbitMQ broker.
+	notifyConnClose chan *amqp.Error        // Channel to watch for errors from the broker in order to renew the connection.
+	publishQueue    chan Message            // Queue for messages waiting to be republished.
+	readChannel     chan chan *amqp.Channel // Access channel for accessing the RabbitMQ Channel in a thread-safe way.
+	breaker         *gobreaker.TwoStepCircuitBreaker
+	breakerSettings gobreaker.Settings
+	logger          log.Logger
 }
 
 func NewRabbitMQ(url string, queueSize int, maxFailures uint32, reconnectInterval time.Duration, st gobreaker.Settings) *RabbitMQ {
-	logger, _ := log.MakeZapLogger()
+	logger, _ := log.NewLogger()
 	return &RabbitMQ{
-		retryC:            make(chan Message, queueSize),
-		readC:             make(chan chan *amqp.Channel),
+		publishQueue:      make(chan Message, queueSize),
+		readChannel:       make(chan chan *amqp.Channel),
+		notifyConnClose:   make(chan *amqp.Error, 16),
 		logger:            logger,
-		breaker:           gobreaker.NewCircuitBreaker(st),
+		breaker:           gobreaker.NewTwoStepCircuitBreaker(st),
+		breakerSettings:   st,
 		url:               url,
 		MaxFailures:       maxFailures,
 		ReconnectInterval: reconnectInterval,
 	}
 }
 
-func (mq *RabbitMQ) Run() error {
-	return nil
+func (mq *RabbitMQ) Run(ctx context.Context) error {
+	if err := mq.dial(); err != nil {
+		return err
+	}
+
+	errg, ctx := errgroup.WithContext(ctx)
+	errg.Go(func() error {
+		return mq.runPublishQueue(ctx)
+	})
+
+	go mq.handleConnectionErrors()
+	go mq.handleChannelReads()
+
+	return errg.Wait()
 }
 
-// HandleChannelRequests is meant to be run in a seperate goroutine.
-func (mq *RabbitMQ) handleChannelRequests() {
-	for req := range mq.readC {
-		// mq.mu.RLock()
+func (mq *RabbitMQ) runPublishQueue(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		default:
+			preparedMessages := mq.prepareExchangePipelined(ctx, mq.publishQueue)
+			mq.publishPipelined(ctx, preparedMessages)
+		}
+	}
+}
+
+// handleChannelReads is meant to be run in a seperate goroutine.
+func (mq *RabbitMQ) handleChannelReads() {
+	for req := range mq.readChannel {
 		channel, err := mq.setUpChannel()
 		if err != nil {
-			mq.logger.Infow("Failed opening a new channel", "err", err)
+			mq.logger.Log("Failed opening a new channel", "err", err)
+			close(req)
+			continue
 		}
-		// mq.mu.RUnlock()
 		req <- channel
 	}
 }
 
-// WatchConnection is meant to be run in a seperate goroutine.
+// handleConnectionErrors is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleConnectionErrors() {
-	for e := range mq.errC {
-		if e == nil || !isConnectionError(e) {
+	for e := range mq.notifyConnClose {
+		if e == nil {
 			continue
 		}
 
@@ -73,57 +101,64 @@ func (mq *RabbitMQ) handleConnectionErrors() {
 			if err == nil {
 				break
 			}
-			mq.logger.Infow("Reconnecting to RabbitMQ")
+			mq.logger.Log("Reconnecting to RabbitMQ")
 			time.Sleep(mq.ReconnectInterval)
 		}
 	}
 }
 
-// Dial renews current TCP connection.
+// dial renews current TCP connection.
 func (mq *RabbitMQ) dial() error {
-	conn, err := mq.breaker.Execute(func() (interface{}, error) {
-		return amqp.Dial(mq.url)
-	})
+	callSucceded, err := mq.breaker.Allow()
 	if err != nil {
 		return err
 	}
-	mq.mu.Lock()
-	defer mq.mu.Unlock()
-	mq.connection = conn.(*amqp.Connection)
+	conn, err := amqp.Dial(mq.url)
+	if err != nil {
+		if isConnectionError(err.(*amqp.Error)) {
+			callSucceded(false)
+		}
+		// Error did not render broker unavailable.
+		callSucceded(true)
+
+		return err
+	}
+	callSucceded(true)
+
+	mq.mutex.Lock()
+	defer mq.mutex.Unlock()
+	mq.connection = conn
 	return nil
 }
 
 func (mq *RabbitMQ) channel() *amqp.Channel {
-	ask := make(chan *amqp.Channel)
-	mq.readC <- ask
-	s := <-ask
-	return s
+	for {
+		ask := make(chan *amqp.Channel)
+		mq.readChannel <- ask
+
+		// For range over channel terminates automatically when the channel closes.
+		for channel := range ask {
+			return channel
+		}
+
+		time.Sleep(mq.ReconnectInterval)
+	}
 }
 
 // Close active connection gracefully.
 func (mq *RabbitMQ) Close() {
 	if mq.connection != nil && !mq.connection.IsClosed() {
-		mq.logger.Infow("Closing active connections")
+		mq.logger.Log("Closing active connections")
 		if err := mq.connection.Close(); err != nil {
-			mq.logger.Infow("Failed to close active connections", "err", err.Error())
+			mq.logger.Log("Failed to close active connections", "err", err.Error())
 		}
-	}
-}
-
-// RetryEnqueue appends a message to the RetryQueue and throws an error if the queue is full.
-func (mq *RabbitMQ) retryEnqueue(msg Message) error {
-	select {
-	case mq.retryC <- msg:
-		return nil
-	default:
-		return fmt.Errorf("retry queue is full")
 	}
 }
 
 func (mq *RabbitMQ) setUpChannel() (*amqp.Channel, error) {
 	ch, err := mq.connection.Channel()
-	mq.mu.Lock()
-	mq.errC = ch.NotifyClose(make(chan *amqp.Error, 16))
-	defer mq.mu.Unlock()
+	mq.mutex.Lock()
+	defer mq.mutex.Unlock()
+	mq.connection.NotifyClose(mq.notifyConnClose)
 	return ch, err
 }

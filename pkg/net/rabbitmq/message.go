@@ -17,18 +17,10 @@ const (
 
 const DefaultConsumer = "article-service"
 
-const (
-	createdEvent = ".event.created"
-	deletedEvent = ".event.deleted"
-	updatedEvent = ".event.updated"
-)
-
 type Message struct {
 	Body        []byte
 	ContentType ContentType
 	Timestamp   time.Time
-	// OnQueue     bool // Whether a Message should be published directly to a queue.
-	// Enqueue     bool // Whether a Message should be enqueued on failure for later retry.
 	Route
 }
 
@@ -42,7 +34,7 @@ type Route struct {
 // makeMessageFromEvent returns a message suitable for pub/sub methods and
 // a non-nil error if the event could not be marshaled into JSON.
 func makeMessageFromEvent(e event.Event) (Message, error) {
-	body, err := json.Marshal(e.Body)
+	body, err := json.Marshal(e)
 	if err != nil {
 		return Message{}, err
 	}
@@ -58,12 +50,12 @@ func makeMessageFromEvent(e event.Event) (Message, error) {
 
 func routingKeyFromEvent(entity string, t event.EventType) (rKey string) {
 	switch t {
-	case event.Created:
-		rKey = entity + createdEvent
-	case event.Deleted:
-		rKey = entity + deletedEvent
-	case event.Updated:
-		rKey = entity + updatedEvent
+	case event.ArticleCreated:
+		rKey = entity + ".event.created"
+	case event.ArticleDeleted:
+		rKey = entity + ".event.deleted"
+	case event.ArticleUpdated:
+		rKey = entity + ".event.updated"
 	}
 	return
 }

@@ -9,7 +9,7 @@ import (
 )
 
 // Load assumes the .env file is located in the root directory.
-// It panics if it cannot find the file named ".env" in the root dir.
+// It panics if it cannot find the file named ".env" in the project root dir.
 func Load(projectDir string) {
 	re := regexp.MustCompile(`^(.*` + projectDir + `)`)
 	cwd, _ := os.Getwd()

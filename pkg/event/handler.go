@@ -20,8 +20,9 @@ type Consumer interface {
 type Publisher interface {
 	// Exchanges and queues should be maintained internally depending on the type of event.
 	Publish(context.Context, Event) error
-	// Resilient publish doesn't return error and instead retries each event until it succeeds.
-	ResilientPublish(context.Context, Event)
+
+	// Resilient publish should return only parsing error and on any other error retry each event until it succeeds.
+	ResilientPublish(context.Context, Event) error
 }
 
 type Subscriber interface {

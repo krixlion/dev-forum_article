@@ -61,6 +61,6 @@ func isConnectionError(err *amqp.Error) bool {
 	return errorType(err.Code) == ConnectionError
 }
 
-func isChannelError(err *amqp.Error) bool {
-	return errorType(err.Code) == ChannelError
-}
+// func isChannelError(err *amqp.Error) bool {
+// 	return errorType(err.Code) == ChannelError
+// }
