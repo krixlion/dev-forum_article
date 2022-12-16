@@ -7,7 +7,6 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/log"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/server"
-	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
 )
@@ -16,11 +15,11 @@ type ArticleService struct {
 	grpcPort int
 	grpcSrv  *grpc.Server
 	srv      server.ArticleServer
-	logger   *zap.SugaredLogger
+	logger   log.Logger
 }
 
 func NewArticleService(grpcPort int) *ArticleService {
-	logger, _ := log.MakeZapLogger()
+	logger, _ := log.NewLogger()
 	s := &ArticleService{
 		grpcPort: grpcPort,
 		grpcSrv:  grpc.NewServer(),
@@ -34,13 +33,13 @@ func NewArticleService(grpcPort int) *ArticleService {
 func (service *ArticleService) Run() {
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", service.grpcPort))
 	if err != nil {
-		service.logger.Infow("transport", "grpc", "msg", "failed to create a listener", "err", err)
+		service.logger.Log("failed to create a listener", "transport", "grpc", "err", err)
 	}
 
-	service.logger.Infow("listening", "transport", "grpc", "port", service.grpcPort)
+	service.logger.Log("listening", "transport", "grpc", "port", service.grpcPort)
 	err = service.grpcSrv.Serve(lis)
 	if err != nil {
-		service.logger.Infow("failed to serve", "transport", "grpc", "err", err)
+		service.logger.Log("failed to serve", "transport", "grpc", "err", err)
 	}
 }
 
