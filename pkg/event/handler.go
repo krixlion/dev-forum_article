@@ -20,12 +20,13 @@ type Consumer interface {
 type Publisher interface {
 	// Exchanges and queues should be maintained internally depending on the type of event.
 	Publish(context.Context, Event) error
-	PublishOnQueue(context.Context, Event) error
+	// Resilient publish doesn't return error and instead retries each event until it succeeds.
+	ResilientPublish(context.Context, Event)
 }
 
 type Subscriber interface {
-	Subscribe(context.Context, EventType, HandlerFunc) error
-	SubscribeToQueue(context.Context, HandlerFunc) error
+	// Subscribe takes in a context, function which will handle the event and event types to subscribe for.
+	Subscribe(context.Context, HandlerFunc) error
 }
 
 // HandleFunc is registered for a subscriber and is invoked for each received event.

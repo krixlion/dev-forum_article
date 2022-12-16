@@ -4,15 +4,25 @@ import (
 	"go.uber.org/zap"
 )
 
-// MakeZapLogger returns an error on hardware error.
-func MakeZapLogger() (*zap.SugaredLogger, error) {
+type Logger interface {
+	Log(msg string, keyvals ...interface{})
+}
+
+type log struct {
+	logger *zap.SugaredLogger
+}
+
+// NewLogger returns an error on hardware error.
+func NewLogger() (Logger, error) {
 	logger, err := zap.NewProduction(zap.AddCaller(), zap.AddCallerSkip(1))
 	sugar := logger.Sugar()
 	defer sugar.Sync()
-	return sugar, err
+
+	return log{
+		logger: logger.Sugar(),
+	}, err
 }
 
-func PrintLn(msg string, keyvals ...interface{}) {
-	logger, _ := MakeZapLogger()
-	logger.Infow(msg, keyvals...)
+func (log log) Log(msg string, keyvals ...interface{}) {
+	log.logger.Infow(msg, keyvals)
 }
