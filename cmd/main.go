@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/krixlion/dev-forum_article/cmd/service"
 	"github.com/krixlion/dev-forum_article/pkg/env"
-	"github.com/krixlion/dev-forum_article/pkg/service"
 )
 
 var port int
