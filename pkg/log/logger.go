@@ -25,5 +25,5 @@ func NewLogger() (Logger, error) {
 }
 
 func (log log) Log(msg string, keyvals ...interface{}) {
-	log.logger.Infow(msg, keyvals)
+	log.logger.Infow(msg, keyvals...)
 }
