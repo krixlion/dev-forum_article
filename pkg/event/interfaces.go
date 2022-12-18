@@ -3,18 +3,19 @@ package event
 import (
 	"context"
 	"io"
+
+	"github.com/krixlion/dev-forum_article/pkg/entity"
 )
 
 type Handler interface {
 	Consumer
 	Publisher
-	Subscriber
 	io.Closer
 }
 
 type Consumer interface {
-	Consume(context.Context) (<-chan Event, error)
-	ConsumeOnQueue(context.Context) (<-chan Event, error)
+	// Command is queue's name
+	Consume(ctx context.Context, command string, entity entity.EntityName, eventType EventType) (<-chan Event, error)
 }
 
 type Publisher interface {
@@ -26,9 +27,14 @@ type Publisher interface {
 }
 
 type Subscriber interface {
-	// Subscribe takes in a context, function which will handle the event and event types to subscribe for.
-	Subscribe(context.Context, HandlerFunc) error
+	// Subscribe takes in a context, entity and event type to subscribe for and a function to invoke on each event.
+	Subscribe(context.Context, HandlerFunc, entity.EntityName, ...EventType) error
 }
 
 // HandleFunc is registered for a subscriber and is invoked for each received event.
 type HandlerFunc func(context.Context, Event) error
+
+// type Command interface {
+// 	Name()
+// 	Execute() error
+// }

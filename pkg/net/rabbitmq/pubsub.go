@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/event"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -103,30 +104,32 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 	return err
 }
 
-func (mq *RabbitMQ) Consume(ctx context.Context, r Route) (<-chan event.Event, <-chan error) {
+func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.EntityName, eType event.EventType) (<-chan event.Event, error) {
 	events := make(chan event.Event)
-	errors := make(chan error, 1)
 
 	ch := mq.channel()
 
 	if err := ctx.Err(); err != nil {
-		errors <- err
-		close(errors)
-		return events, errors
+		return events, err
 	}
+
+	route := makeRouteFromEvent(event.Event{
+		Entity: entity,
+		Type:   eType,
+	})
 
 	callSucceded, err := mq.breaker.Allow()
 	if err != nil {
-		return nil, errors
+		return nil, err
 	}
 
 	queue, err := ch.QueueDeclare(
-		r.QueueName, // name
-		false,       // durable
-		false,       // delete when unused
-		false,       // exclusive
-		false,       // no-wait
-		nil,         // arguments
+		command, // name
+		false,   // durable
+		false,   // delete when unused
+		false,   // exclusive
+		false,   // no-wait
+		nil,     // arguments
 	)
 	if err != nil {
 		if isConnectionError(err.(*amqp.Error)) {
@@ -135,28 +138,25 @@ func (mq *RabbitMQ) Consume(ctx context.Context, r Route) (<-chan event.Event, <
 		// Error did not render broker unavailable.
 		callSucceded(true)
 
-		errors <- err
-		return nil, errors
+		return nil, err
 	}
 	callSucceded(true)
 
 	if err := ctx.Err(); err != nil {
-		errors <- err
-		return events, errors
+		return nil, err
 	}
 
 	callSucceded, err = mq.breaker.Allow()
 	if err != nil {
-		errors <- err
-		return nil, errors
+		return nil, err
 	}
 
 	err = ch.QueueBind(
-		queue.Name,     // queue name
-		r.RoutingKey,   // routing key
-		r.ExchangeName, // exchange
-		false,          // Immidiate
-		nil,            // Additional args
+		queue.Name,         // queue name
+		route.RoutingKey,   // routing key
+		route.ExchangeName, // exchange
+		false,              // Immidiate
+		nil,                // Additional args
 	)
 	if err != nil {
 		if isConnectionError(err.(*amqp.Error)) {
@@ -165,25 +165,22 @@ func (mq *RabbitMQ) Consume(ctx context.Context, r Route) (<-chan event.Event, <
 		// Error did not render broker unavailable.
 		callSucceded(true)
 
-		errors <- err
-		return events, errors
+		return nil, err
 	}
 	callSucceded(true)
 
 	if err := ctx.Err(); err != nil {
-		errors <- err
-		return events, errors
+		return nil, err
 	}
 
 	callSucceded, err = mq.breaker.Allow()
 	if err != nil {
-		errors <- err
-		return events, errors
+		return nil, err
 	}
 
 	messages, err := ch.Consume(
 		queue.Name,      // queue
-		DefaultConsumer, // consumer
+		mq.ConsumerName, // consumer
 		false,           // auto ack
 		false,           // exclusive
 		false,           // no local
@@ -197,30 +194,32 @@ func (mq *RabbitMQ) Consume(ctx context.Context, r Route) (<-chan event.Event, <
 		// Error did not render broker unavailable.
 		callSucceded(true)
 
-		errors <- err
-		return events, errors
+		return nil, err
 	}
 	callSucceded(true)
 
 	go func() {
-		for message := range messages {
-			event := event.Event{}
+		for {
+			select {
+			case message := <-messages:
+				event := event.Event{}
 
-			if message.ContentType == string(ContentTypeJson) {
-				if err := json.Unmarshal(message.Body, &event); err != nil {
-					errors <- err
-					return
+				if message.ContentType == string(ContentTypeJson) {
+					if err := json.Unmarshal(message.Body, &event); err != nil {
+						mq.logger.Log("Failed to process message", "err", err)
+						continue
+					}
 				}
 
-				if err := ctx.Err(); err != nil {
-					errors <- err
-					return
-				}
+				message.Ack(false)
+				events <- event
+
+			case <-ctx.Done():
+				close(events)
+				return
 			}
-
-			events <- event
 		}
 	}()
 
-	return events, errors
+	return events, nil
 }

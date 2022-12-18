@@ -10,6 +10,7 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/log"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
+	"github.com/krixlion/dev-forum_article/pkg/net/rabbitmq"
 	"github.com/krixlion/dev-forum_article/pkg/storage"
 	"github.com/krixlion/dev-forum_article/pkg/storage/cmd"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
@@ -20,13 +21,13 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	repository   storage.Storage
+	storage      storage.Storage
 	eventHandler event.Handler
 	logger       log.Logger
 }
 
-// MakeArticleServer reads DB connection data from
-// the environment using os.Getenv() and loads it to the DB struct.
+// MakeArticleServer reads connection data from the environment
+// using os.Getenv() and loads it to the conn structs.
 func MakeArticleServer() ArticleServer {
 	cmd_port := os.Getenv("DB_WRITE_PORT")
 	cmd_host := os.Getenv("DB_WRITE_HOST")
@@ -37,23 +38,40 @@ func MakeArticleServer() ArticleServer {
 	query_host := os.Getenv("DB_READ_HOST")
 	query_pass := os.Getenv("DB_READ_PASS")
 
+	mq_port := os.Getenv("MQ_PORT")
+	mq_host := os.Getenv("MQ_HOST")
+	mq_user := os.Getenv("MQ_USER")
+	mq_pass := os.Getenv("MQ_PASS")
+
+	consumer := "article-service"
+	config := rabbitmq.Config{
+		QueueSize:         100,
+		ReconnectInterval: time.Second * 2,
+		MaxRequests:       30,
+		ClearInterval:     time.Second * 5,
+		ClosedTimeout:     time.Second * 15,
+	}
+
 	logger, _ := log.NewLogger()
 	cmd := cmd.MakeDB(cmd_port, cmd_host, cmd_user, cmd_pass)
 	query := query.MakeDB(query_host, query_port, query_pass)
 
 	return ArticleServer{
-		repository: storage.NewStorage(cmd, query, logger),
-		logger:     logger,
+		storage:      storage.NewStorage(cmd, query, logger),
+		logger:       logger,
+		eventHandler: rabbitmq.NewRabbitMQ(consumer, mq_user, mq_pass, mq_host, mq_port, config),
 	}
 }
 
 func (s ArticleServer) Close() error {
-	return s.repository.Close()
+	s.eventHandler.Close()
+	s.storage.Close()
+	return nil
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
 	article := entity.MakeArticleFromPb(req.GetArticle())
-	err := s.repository.Create(ctx, article)
+	err := s.storage.Create(ctx, article)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
@@ -64,8 +82,8 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	}
 
 	event := event.Event{
-		Entity:    entity.ArticleEntityName,
-		Type:      event.ArticleCreated,
+		Entity:    entity.ArticleEntity,
+		Type:      event.Created,
 		Body:      json,
 		Timestamp: time.Now(),
 	}
@@ -78,7 +96,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 }
 
 func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (*pb.DeleteArticleResponse, error) {
-	err := s.repository.Delete(ctx, req.GetId())
+	err := s.storage.Delete(ctx, req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
@@ -89,8 +107,8 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 	}
 
 	event := event.Event{
-		Entity:    entity.ArticleEntityName,
-		Type:      event.ArticleDeleted,
+		Entity:    entity.ArticleEntity,
+		Type:      event.Deleted,
 		Body:      json,
 		Timestamp: time.Now(),
 	}
@@ -105,7 +123,7 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (*pb.UpdateArticleResponse, error) {
 	article := entity.MakeArticleFromPb(req.GetArticle())
 
-	err := s.repository.Update(ctx, article)
+	err := s.storage.Update(ctx, article)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
@@ -116,8 +134,8 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 	}
 
 	event := event.Event{
-		Entity:    entity.ArticleEntityName,
-		Type:      event.ArticleUpdated,
+		Entity:    entity.ArticleEntity,
+		Type:      event.Updated,
 		Body:      json,
 		Timestamp: time.Now(),
 	}
@@ -130,7 +148,7 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 }
 
 func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.GetArticleResponse, error) {
-	article, err := s.repository.Get(ctx, req.GetArticleId())
+	article, err := s.storage.Get(ctx, req.GetArticleId())
 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get article: %v", err)
@@ -148,7 +166,7 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 
 func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleService_GetStreamServer) error {
 	ctx := stream.Context()
-	articles, err := s.repository.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
+	articles, err := s.storage.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
 	if err != nil {
 		return err
 	}

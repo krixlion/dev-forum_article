@@ -22,8 +22,8 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	}
 
 	e := event.Event{
-		Entity:    entity.ArticleEntityName,
-		Type:      event.ArticleCreated,
+		Entity:    entity.ArticleEntity,
+		Type:      event.Created,
 		Body:      jsonArticle,
 		Timestamp: time.Now(),
 	}
@@ -51,8 +51,8 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	}
 
 	e := event.Event{
-		Entity:    entity.ArticleEntityName,
-		Type:      event.ArticleUpdated,
+		Entity:    entity.ArticleEntity,
+		Type:      event.Updated,
 		Body:      jsonArticle,
 		Timestamp: time.Now(),
 	}
@@ -80,8 +80,8 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	}
 
 	e := event.Event{
-		Entity:    entity.ArticleEntityName,
-		Type:      event.ArticleDeleted,
+		Entity:    entity.ArticleEntity,
+		Type:      event.Deleted,
 		Body:      jsonID,
 		Timestamp: time.Now(),
 	}

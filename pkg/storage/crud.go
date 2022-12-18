@@ -11,6 +11,7 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
 )
 
+// DB is a wrapper for the read model and write model to use with Storage interface.
 type DB struct {
 	cmd    cmd.DB
 	query  query.DB
@@ -54,7 +55,7 @@ func (storage DB) Delete(ctx context.Context, id string) error {
 func (db DB) CatchUp(ctx context.Context) error {
 	db.cmd.Subscribe(ctx, func(ctx context.Context, e event.Event) (err error) {
 
-		if e.Entity != entity.ArticleEntityName {
+		if e.Entity != entity.ArticleEntity {
 			return nil
 		}
 
@@ -63,7 +64,7 @@ func (db DB) CatchUp(ctx context.Context) error {
 		}
 
 		switch e.Type {
-		case event.ArticleCreated:
+		case event.Created:
 			var article entity.Article
 			err = json.Unmarshal([]byte(e.Body), &article)
 			if err != nil {
@@ -73,7 +74,7 @@ func (db DB) CatchUp(ctx context.Context) error {
 			err = db.query.Create(ctx, article)
 			return
 
-		case event.ArticleDeleted:
+		case event.Deleted:
 			var id string
 			err = json.Unmarshal([]byte(e.Body), &id)
 			if err != nil {
@@ -83,7 +84,7 @@ func (db DB) CatchUp(ctx context.Context) error {
 			err = db.query.Delete(ctx, id)
 			return
 
-		case event.ArticleUpdated:
+		case event.Updated:
 			var article entity.Article
 			err = json.Unmarshal([]byte(e.Body), &article)
 			if err != nil {

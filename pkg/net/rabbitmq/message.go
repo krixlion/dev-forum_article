@@ -28,7 +28,6 @@ type Route struct {
 	ExchangeName string
 	ExchangeType string
 	RoutingKey   string
-	QueueName    string
 }
 
 // makeMessageFromEvent returns a message suitable for pub/sub methods and
@@ -48,26 +47,24 @@ func makeMessageFromEvent(e event.Event) (Message, error) {
 	return msg, nil
 }
 
-func routingKeyFromEvent(entity string, t event.EventType) (rKey string) {
-	switch t {
-	case event.ArticleCreated:
-		rKey = entity + ".event.created"
-	case event.ArticleDeleted:
-		rKey = entity + ".event.deleted"
-	case event.ArticleUpdated:
-		rKey = entity + ".event.updated"
+func routingKeyFromEvent(e event.Event) (rKey string) {
+	switch e.Type {
+	case event.Created:
+		rKey = string(e.Entity) + ".event.created"
+	case event.Deleted:
+		rKey = string(e.Entity) + ".event.deleted"
+	case event.Updated:
+		rKey = string(e.Entity) + ".event.updated"
 	}
 	return
 }
 
 func makeRouteFromEvent(e event.Event) Route {
-	rKey := routingKeyFromEvent(e.Entity, e.Type)
+	rKey := routingKeyFromEvent(e)
 
-	r := Route{
-		ExchangeName: e.Entity,
+	return Route{
+		ExchangeName: string(e.Entity),
 		ExchangeType: amqp.ExchangeTopic,
 		RoutingKey:   rKey,
 	}
-
-	return r
 }
