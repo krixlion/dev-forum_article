@@ -4,24 +4,34 @@ services:
 
   service:
     container_name: "${PROJECT_NAME}_${AGGREGATE_ID}-${SERVICE_ENV}"
+    restart: unless-stopped
     image: krixlion/go-reflex-dlv:${GO_VERSION}
     environment:
       - BUILD_ARGS=-race cmd/main.go
       - RUN_ARGS=-p ${GRPC_PORT}
       - DEBUG_PORT=${DEBUG_PORT}
       # - DELVE_ARGS=--continue
-    volumes:
-      - .:/app
     ports:
       - ${GRPC_PORT}:${GRPC_PORT}
       - ${DEBUG_PORT}:${DEBUG_PORT}
+    volumes:
+      - .:/app
     depends_on:
       - eventstore
       - redis
       - rabbitmq
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 500M
+        reservations:
+          cpus: '0.25'
+          memory: 20M
 
   eventstore:
     image: eventstore/eventstore:22.10.0-buster-slim
+    restart: unless-stopped
     environment:
       - EVENTSTORE_CLUSTER_SIZE=1
       - EVENTSTORE_RUN_PROJECTIONS=All
@@ -34,9 +44,16 @@ services:
     ports:
     # HTTP, gRPC port
       - "${DB_WRITE_PORT}:${DB_WRITE_PORT}"
-    restart: unless-stopped
     volumes:
         - eventstore-data:/var/lib/eventstore
+    # deploy:
+      # resources:
+        # limits:
+          # cpus: '0.50'
+          # memory: 550M
+        # reservations:
+          # cpus: '0.25'
+          # memory: 20M
 
   redis:
     image: redis:7.0.5-alpine
@@ -47,7 +64,15 @@ services:
     volumes:
       - ./config/redis.conf:/usr/local/etc/redis/redis.conf
       - redis-data:/data
-        
+    # deploy:
+      # resources:
+        # limits:
+          # cpus: '0.50'
+          # memory: 350M
+        # reservations:
+          # cpus: '0.25'
+          # memory: 10M
+
   rabbitmq:
     image: rabbitmq:3.11.3-alpine
     restart: unless-stopped
@@ -59,6 +84,14 @@ services:
     volumes:
     - rabbitmq-data:/var/lib/rabbitmq/
     - rabbitmq-logs:/var/log/rabbitmq
+    # deploy:
+      # resources:
+        # limits:
+          # cpus: '0.50'
+          # memory: 350M
+        # reservations:
+          # cpus: '0.25'
+          # memory: 20M
 
 volumes:
   eventstore-data:
