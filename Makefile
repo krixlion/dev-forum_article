@@ -17,8 +17,8 @@ run-dev:
 run-local:
 	go run cmd/main.go
 
-test:
-	docker compose exec service go test -race ./...
+test: # param: args
+	docker compose -f docker-compose.dev.yml --env-file .env exec service go test ${args} -race ./...
 
 push-image: # param: version
 	docker build deployment/ -t krixlion/$(PROJECT_NAME)_$(AGGREGATE_ID):$(version)
