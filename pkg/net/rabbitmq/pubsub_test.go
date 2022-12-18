@@ -37,7 +37,7 @@ func init() {
 
 	mq = rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config)
 
-	go mq.Run(context.Background())
+	go mq.Run()
 }
 
 func getTestArticle() (entity.Article, error) {
