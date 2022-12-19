@@ -6,7 +6,9 @@ require (
 	github.com/EventStore/EventStore-Client-Go/v3 v3.0.0
 	github.com/go-redis/redis/v9 v9.0.0-rc.2
 	github.com/gofrs/uuid v3.3.0+incompatible
+	github.com/google/go-cmp v0.5.9
 	github.com/joho/godotenv v1.4.0
+	github.com/matryer/is v1.4.0
 	github.com/rabbitmq/amqp091-go v1.5.0
 	github.com/sony/gobreaker v0.5.0
 	go.uber.org/zap v1.23.0

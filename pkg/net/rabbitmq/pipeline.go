@@ -2,7 +2,7 @@ package rabbitmq
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/krixlion/dev-forum_article/pkg/event"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -24,7 +24,7 @@ func (mq *RabbitMQ) enqueue(msg Message) error {
 	case mq.publishQueue <- msg:
 		return nil
 	default:
-		return fmt.Errorf("publish queue is full")
+		return errors.New("publish queue is full")
 	}
 }
 

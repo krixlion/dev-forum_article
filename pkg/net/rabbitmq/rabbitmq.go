@@ -52,9 +52,12 @@ type RabbitMQ struct {
 //		defer rabbit.Close()
 //	}
 func NewRabbitMQ(consumer, user, pass, host, port string, config Config) *RabbitMQ {
+
 	url := fmt.Sprintf("amqp://%s:%s@%s:%s/", user, pass, host, port)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	logger, _ := log.NewLogger()
+
 	return &RabbitMQ{
 		publishQueue:    make(chan Message, config.QueueSize),
 		readChannel:     make(chan chan *amqp.Channel),
@@ -75,9 +78,9 @@ func NewRabbitMQ(consumer, user, pass, host, port string, config Config) *Rabbit
 }
 
 // Run initializes the RabbitMQ connection and starts the system in
-// seperate goroutines while blocking the goroutine it was invoked from.
+// seperate goroutines while blocking the goroutine it was called from.
 //
-// Invoke Close() method to shutdown the system.
+// Do not forget to Close() in order to shutdown the system.
 func (mq *RabbitMQ) Run() error {
 	if err := mq.dial(); err != nil {
 		return err

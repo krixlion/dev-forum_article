@@ -3,29 +3,40 @@ package rabbitmq_test
 import (
 	"context"
 	"encoding/json"
+	"math/rand"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/env"
 	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/net/rabbitmq"
+
+	"github.com/gofrs/uuid"
+	"github.com/google/go-cmp/cmp"
+	"github.com/matryer/is"
 )
 
 const consumer = "TESTING"
 
-var mq *rabbitmq.RabbitMQ
+var (
+	port string
+	host string
+	user string
+	pass string
+)
 
 func init() {
 	env.Load("app")
 
-	port := os.Getenv("MQ_PORT")
-	host := os.Getenv("MQ_HOST")
-	user := os.Getenv("MQ_USER")
-	pass := os.Getenv("MQ_PASS")
+	port = os.Getenv("MQ_PORT")
+	host = os.Getenv("MQ_HOST")
+	user = os.Getenv("MQ_USER")
+	pass = os.Getenv("MQ_PASS")
+}
+
+func setUpMQ() *rabbitmq.RabbitMQ {
 
 	config := rabbitmq.Config{
 		QueueSize:         100,
@@ -35,12 +46,20 @@ func init() {
 		ClosedTimeout:     time.Second * 15,
 	}
 
-	mq = rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config)
-
-	go mq.Run()
+	return rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config)
 }
 
-func getTestArticle() (entity.Article, error) {
+func randomText(length int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	v := make([]rune, length)
+	for i := range v {
+		v[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(v)
+}
+
+func getRandomArticle() (entity.Article, error) {
+
 	id, err := uuid.NewV4()
 	if err != nil {
 		return entity.Article{}, err
@@ -54,55 +73,121 @@ func getTestArticle() (entity.Article, error) {
 	return entity.Article{
 		Id:     id.String(),
 		UserId: userId.String(),
-		Title:  "test title",
-		Body:   "test body",
+		Title:  randomText(10),
+		Body:   randomText(30),
 	}, nil
-
 }
 
 func TestPubSub(t *testing.T) {
+	is := is.New(t)
+	mq := setUpMQ()
 
-	article, err := getTestArticle()
-	if err != nil {
-		t.Fatalf("Failed to generate article, err: %s", err)
-	}
+	go func() {
+		err := mq.Run()
+		defer mq.Close()
+		is.NoErr(err)
+	}()
+
+	article, err := getRandomArticle()
+	is.NoErr(err)
 
 	data, err := json.Marshal(article)
-	if err != nil {
-		t.Fatalf("Failed to marshal article, err: %s", err)
-	}
+	is.NoErr(err)
 
-	tests := []struct {
-		name  string
-		event event.Event
+	testCases := []struct {
+		desc string
+		arg  event.Event
 	}{
 		{
-			name: "Test if a simple message is correctly published and consumed.",
-			event: event.Event{
-				Entity: entity.ArticleEntity,
-				Type:   event.Created,
-				Body:   data,
+			desc: "Test if a simple message is correctly published and consumed.",
+			arg: event.Event{
+				Entity:    entity.ArticleEntity,
+				Type:      event.Deleted,
+				Body:      data,
+				Timestamp: time.Now(),
 			},
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			// is needs to have up to date T.
+			is := is.New(t)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			err := mq.Publish(ctx, test.event)
-			if err != nil {
-				t.Fatalf("Failed to publish event, err: %s", err)
-			}
 
-			events, err := mq.Consume(ctx, "createArticle", test.event.Entity, test.event.Type)
-			if err != nil {
-				t.Fatalf("Failed to consume events, err: %s", err)
-			}
+			err := mq.Publish(ctx, tC.arg)
+			is.NoErr(err)
+
+			events, err := mq.Consume(ctx, "deleteArticle", tC.arg.Entity, tC.arg.Type)
+			is.NoErr(err)
 
 			event := <-events
-			if !reflect.DeepEqual(test.event, event) {
-				t.Fatalf("Events are not equal, received: %+v\n", event)
+			if !cmp.Equal(tC.arg, event) {
+				t.Fatalf("Events are not equal, wanted: %v, received %v", tC.arg, event)
 			}
+			received := entity.Article{}
+			err = json.Unmarshal(event.Body, &received)
+			is.NoErr(err)
+
+			is.Equal(received, article)
+		})
+	}
+}
+
+func TestPubSubPipeline(t *testing.T) {
+	is := is.New(t)
+	mq := setUpMQ()
+
+	go func() {
+		err := mq.Run()
+		defer mq.Close()
+		is.NoErr(err)
+	}()
+
+	article, err := getRandomArticle()
+	is.NoErr(err)
+
+	data, err := json.Marshal(article)
+	is.NoErr(err)
+
+	testCases := []struct {
+		desc string
+		arg  event.Event
+	}{
+		{
+			desc: "Test if a simple message is correctly published through a pipeline and consumed.",
+			arg: event.Event{
+				Entity:    entity.ArticleEntity,
+				Type:      event.Created,
+				Body:      data,
+				Timestamp: time.Now(),
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			// is needs to have up to date T.
+			is := is.New(t)
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			err := mq.ResilientPublish(ctx, tC.arg)
+			is.NoErr(err)
+
+			events, err := mq.Consume(ctx, "createArticle", tC.arg.Entity, tC.arg.Type)
+			is.NoErr(err)
+
+			event := <-events
+			if !cmp.Equal(tC.arg, event) {
+				t.Fatalf("Events are not equal, wanted: %v, received %v", tC.arg, event)
+			}
+
+			received := entity.Article{}
+			err = json.Unmarshal(event.Body, &received)
+			is.NoErr(err)
+
+			is.Equal(received, article)
 		})
 	}
 }
