@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
-	"github.com/krixlion/dev-forum_article/pkg/log"
+	"github.com/krixlion/dev-forum_article/pkg/logging"
 )
 
 type DB struct {
-	logger log.Logger
+	logger logging.Logger
 	client *esdb.Client
 	// eventHandler event.Handler
 	url string
@@ -21,18 +21,16 @@ func formatConnString(port, host, user, pass string) string {
 func MakeDB(port, host, user, pass string) DB {
 	url := formatConnString(port, host, user, pass)
 	settings, err := esdb.ParseConnectionString(url)
-
 	if err != nil {
 		panic(err)
 	}
 
 	client, _ := esdb.NewClient(settings)
-	logger, _ := log.NewLogger()
+	logger, _ := logging.NewLogger()
 
 	return DB{
 		url:    url,
 		client: client,
-		// eventHandler:     rabbitmq.NewRabbitMQ()
 		logger: logger,
 	}
 }

@@ -9,9 +9,9 @@ import (
 )
 
 type Storage interface {
+	CatchUp(ctx context.Context) error
 	Reader
 	Writer
-	CatchUp(ctx context.Context) error
 }
 
 type Reader interface {

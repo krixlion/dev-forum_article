@@ -32,19 +32,15 @@ type Route struct {
 
 // makeMessageFromEvent returns a message suitable for pub/sub methods and
 // a non-nil error if the event could not be marshaled into JSON.
-func makeMessageFromEvent(e event.Event) (Message, error) {
-	body, err := json.Marshal(e)
-	if err != nil {
-		return Message{}, err
-	}
-
-	msg := Message{
+func makeMessageFromEvent(e event.Event) Message {
+	// Marshal never returns a non-nil error when input is []byte.
+	body, _ := json.Marshal(e)
+	return Message{
 		Body:        body,
 		ContentType: ContentTypeJson,
 		Route:       makeRouteFromEvent(e),
+		Timestamp:   e.Timestamp,
 	}
-
-	return msg, nil
 }
 
 func routingKeyFromEvent(e event.Event) (rKey string) {

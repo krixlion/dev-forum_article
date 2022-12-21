@@ -20,25 +20,19 @@ message CreateArticleRequest {
     Article article = 1;
 }
 
-message CreateArticleResponse {
-    bool is_success = 1;
-}
+message CreateArticleResponse {}
 
 message UpdateArticleRequest {
     Article article = 1;
 }
 
-message UpdateArticleResponse {
-    bool is_success = 1;
-}
+message UpdateArticleResponse {}
 
 message DeleteArticleRequest {
     string id = 1;
 }
 
-message DeleteArticleResponse {
-    bool is_success = 1;
-}
+message DeleteArticleResponse {}
 
 message GetArticleRequest {
     string article_id = 1;

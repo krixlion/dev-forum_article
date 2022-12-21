@@ -9,6 +9,7 @@ import (
 
 	"github.com/krixlion/dev-forum_article/cmd/service"
 	"github.com/krixlion/dev-forum_article/pkg/env"
+	"github.com/krixlion/dev-forum_article/pkg/tracing"
 )
 
 var port int
@@ -24,6 +25,9 @@ const projectDir = "app"
 
 func main() {
 	env.Load(projectDir)
+
+	// Make InitProvider return err instead of calling log.Fatal()
+	tracing.InitProvider()
 
 	service := service.NewArticleService(port)
 	service.Run()

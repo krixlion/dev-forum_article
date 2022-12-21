@@ -67,11 +67,6 @@
 
 
 
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| is_success | [bool](#bool) |  |  |
-
-
 
 
 
@@ -95,11 +90,6 @@
 
 ### DeleteArticleResponse
 
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| is_success | [bool](#bool) |  |  |
 
 
 
@@ -171,11 +161,6 @@
 
 ### UpdateArticleResponse
 
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| is_success | [bool](#bool) |  |  |
 
 
 

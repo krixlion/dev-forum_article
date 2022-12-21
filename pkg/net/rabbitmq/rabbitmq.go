@@ -6,11 +6,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/krixlion/dev-forum_article/pkg/log"
+	"github.com/krixlion/dev-forum_article/pkg/logging"
+	"github.com/krixlion/dev-forum_article/pkg/tracing"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sony/gobreaker"
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	connectionError = 1
+	channelError    = 2
 )
 
 type RabbitMQ struct {
@@ -25,7 +33,7 @@ type RabbitMQ struct {
 	publishQueue    chan Message            // Queue for messages waiting to be republished.
 	readChannel     chan chan *amqp.Channel // Access channel for accessing the RabbitMQ Channel in a thread-safe way.
 	breaker         *gobreaker.TwoStepCircuitBreaker
-	logger          log.Logger
+	logger          logging.Logger
 }
 
 // NewRabbitMQ returns a new connection struct.
@@ -56,7 +64,7 @@ func NewRabbitMQ(consumer, user, pass, host, port string, config Config) *Rabbit
 	url := fmt.Sprintf("amqp://%s:%s@%s:%s/", user, pass, host, port)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	logger, _ := log.NewLogger()
+	logger, _ := logging.NewLogger()
 
 	return &RabbitMQ{
 		publishQueue:    make(chan Message, config.QueueSize),
@@ -82,11 +90,17 @@ func NewRabbitMQ(consumer, user, pass, host, port string, config Config) *Rabbit
 //
 // Do not forget to Close() in order to shutdown the system.
 func (mq *RabbitMQ) Run() error {
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(mq.ctx, "Run")
+	defer span.End()
+
 	if err := mq.dial(); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 
-	errg, ctx := errgroup.WithContext(mq.ctx)
+	errg, ctx := errgroup.WithContext(ctx)
+
 	mq.runPublishQueue(ctx)
 
 	errg.Go(func() error {
@@ -97,16 +111,21 @@ func (mq *RabbitMQ) Run() error {
 		return mq.handleChannelReads(ctx)
 	})
 
-	return errg.Wait()
+	if err := errg.Wait(); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
+	return nil
 }
 
 // Close active connection gracefully.
 func (mq *RabbitMQ) Close() error {
 	defer mq.shutdown()
 	if mq.connection != nil && !mq.connection.IsClosed() {
-		mq.logger.Log("Closing active connections")
+		mq.logger.Log(mq.ctx, "Closing active connections")
 		if err := mq.connection.Close(); err != nil {
-			mq.logger.Log("Failed to close active connections", "err", err)
+			mq.logger.Log(mq.ctx, "Failed to close active connections", "err", err)
 			return err
 		}
 	}
@@ -114,24 +133,34 @@ func (mq *RabbitMQ) Close() error {
 }
 
 func (mq *RabbitMQ) runPublishQueue(ctx context.Context) {
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "runPublishQueue")
+	defer span.End()
+
 	preparedMessages := mq.prepareExchangePipelined(ctx, mq.publishQueue)
 	mq.publishPipelined(ctx, preparedMessages)
 }
 
 // handleChannelReads is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "handleChannelReads")
+	defer span.End()
+
 	for {
 		select {
 		case req := <-mq.readChannel:
 			succedeed, err := mq.breaker.Allow()
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
 				req <- nil
 			}
 
 			channel, err := mq.connection.Channel()
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
 				req <- nil
-				mq.logger.Log("Failed opening a new channel", "err", err)
+				mq.logger.Log(ctx, "Failed opening a new channel", "err", err)
 				succedeed(false)
 				continue
 			}
@@ -140,6 +169,7 @@ func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
 			req <- channel
 
 		case <-ctx.Done():
+			mq.logger.Log(ctx, "Stopped listening to channel reads")
 			return ctx.Err()
 		}
 	}
@@ -147,6 +177,9 @@ func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
 
 // handleConnectionErrors is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleConnectionErrors(ctx context.Context) error {
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "handleConnectionErrors")
+	defer span.End()
+
 	for {
 		select {
 		case e := <-mq.notifyConnClose:
@@ -160,7 +193,11 @@ func (mq *RabbitMQ) handleConnectionErrors(ctx context.Context) error {
 				if err == nil {
 					break
 				}
-				mq.logger.Log("Reconnecting to RabbitMQ")
+
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
+
+				mq.logger.Log(ctx, "Reconnecting to RabbitMQ")
 				time.Sleep(mq.config.ReconnectInterval)
 			}
 
@@ -209,4 +246,38 @@ func (mq *RabbitMQ) channel() *amqp.Channel {
 
 		time.Sleep(mq.config.ReconnectInterval)
 	}
+}
+
+func errorType(code int) int {
+	switch code {
+	case
+		amqp.ContentTooLarge,    // 311
+		amqp.NoConsumers,        // 313
+		amqp.AccessRefused,      // 403
+		amqp.NotFound,           // 404
+		amqp.ResourceLocked,     // 405
+		amqp.PreconditionFailed: // 406
+		return channelError
+
+	case
+		amqp.ConnectionForced, // 320
+		amqp.InvalidPath,      // 402
+		amqp.FrameError,       // 501
+		amqp.SyntaxError,      // 502
+		amqp.CommandInvalid,   // 503
+		amqp.ChannelError,     // 504
+		amqp.UnexpectedFrame,  // 505
+		amqp.ResourceError,    // 506
+		amqp.NotAllowed,       // 530
+		amqp.NotImplemented,   // 540
+		amqp.InternalError:    // 541
+		fallthrough
+
+	default:
+		return connectionError
+	}
+}
+
+func isConnectionError(err *amqp.Error) bool {
+	return errorType(err.Code) == connectionError
 }

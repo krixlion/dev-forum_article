@@ -3,7 +3,7 @@ package rabbitmq_test
 import (
 	"context"
 	"encoding/json"
-	"math/rand"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -11,11 +11,10 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/env"
 	"github.com/krixlion/dev-forum_article/pkg/event"
+	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
 	"github.com/krixlion/dev-forum_article/pkg/net/rabbitmq"
 
-	"github.com/gofrs/uuid"
 	"github.com/google/go-cmp/cmp"
-	"github.com/matryer/is"
 )
 
 const consumer = "TESTING"
@@ -36,8 +35,7 @@ func init() {
 	pass = os.Getenv("MQ_PASS")
 }
 
-func setUpMQ() *rabbitmq.RabbitMQ {
-
+func setUpMQ() (*rabbitmq.RabbitMQ, func()) {
 	config := rabbitmq.Config{
 		QueueSize:         100,
 		ReconnectInterval: time.Second * 2,
@@ -45,58 +43,33 @@ func setUpMQ() *rabbitmq.RabbitMQ {
 		ClearInterval:     time.Second * 5,
 		ClosedTimeout:     time.Second * 15,
 	}
-
-	return rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config)
-}
-
-func randomText(length int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	v := make([]rune, length)
-	for i := range v {
-		v[i] = letters[rand.Intn(len(letters))]
+	mq := rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config)
+	tearDown := func() {
+		go func() {
+			err := mq.Run()
+			defer mq.Close()
+			if err != nil {
+				log.Fatalf("MQ shutdown with error: %s", err)
+			}
+		}()
 	}
-	return string(v)
-}
-
-func getRandomArticle() (entity.Article, error) {
-
-	id, err := uuid.NewV4()
-	if err != nil {
-		return entity.Article{}, err
-	}
-
-	userId, err := uuid.NewV4()
-	if err != nil {
-		return entity.Article{}, err
-	}
-
-	return entity.Article{
-		Id:     id.String(),
-		UserId: userId.String(),
-		Title:  randomText(10),
-		Body:   randomText(30),
-	}, nil
+	return mq, tearDown
 }
 
 func TestPubSub(t *testing.T) {
-	is := is.New(t)
-	mq := setUpMQ()
+	mq, tearDown := setUpMQ()
+	tearDown()
 
-	go func() {
-		err := mq.Run()
-		defer mq.Close()
-		is.NoErr(err)
-	}()
-
-	article, err := getRandomArticle()
-	is.NoErr(err)
-
+	article := gentest.RandomArticle()
 	data, err := json.Marshal(article)
-	is.NoErr(err)
+	if err != nil {
+		t.Fatalf("Failed to marshal article, input: %+v, err: %s", article, err)
+	}
 
 	testCases := []struct {
-		desc string
-		arg  event.Event
+		desc    string
+		arg     event.Event
+		wantErr bool
 	}{
 		{
 			desc: "Test if a simple message is correctly published and consumed.",
@@ -106,53 +79,46 @@ func TestPubSub(t *testing.T) {
 				Body:      data,
 				Timestamp: time.Now(),
 			},
+			wantErr: false,
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			// is needs to have up to date T.
-			is := is.New(t)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
 			err := mq.Publish(ctx, tC.arg)
-			is.NoErr(err)
+			if (err != nil) != tC.wantErr {
+				t.Errorf("RabbitMQ.Publish() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
+			}
 
 			events, err := mq.Consume(ctx, "deleteArticle", tC.arg.Entity, tC.arg.Type)
-			is.NoErr(err)
+			if (err != nil) != tC.wantErr {
+				t.Errorf("RabbitMQ.Consume() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
+			}
 
 			event := <-events
 			if !cmp.Equal(tC.arg, event) {
-				t.Fatalf("Events are not equal, wanted: %v, received %v", tC.arg, event)
+				t.Fatalf("Events are not equal, want = %+v\n, got = %+v\n", tC.arg, event)
 			}
-			received := entity.Article{}
-			err = json.Unmarshal(event.Body, &received)
-			is.NoErr(err)
-
-			is.Equal(received, article)
 		})
 	}
 }
 
 func TestPubSubPipeline(t *testing.T) {
-	is := is.New(t)
-	mq := setUpMQ()
+	mq, tearDown := setUpMQ()
+	tearDown()
 
-	go func() {
-		err := mq.Run()
-		defer mq.Close()
-		is.NoErr(err)
-	}()
-
-	article, err := getRandomArticle()
-	is.NoErr(err)
-
+	article := gentest.RandomArticle()
 	data, err := json.Marshal(article)
-	is.NoErr(err)
+	if err != nil {
+		t.Fatalf("Failed to marshal article, input = %+v\n, err = %s", article, err)
+	}
 
 	testCases := []struct {
-		desc string
-		arg  event.Event
+		desc    string
+		arg     event.Event
+		wantErr bool
 	}{
 		{
 			desc: "Test if a simple message is correctly published through a pipeline and consumed.",
@@ -162,32 +128,29 @@ func TestPubSubPipeline(t *testing.T) {
 				Body:      data,
 				Timestamp: time.Now(),
 			},
+			wantErr: false,
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			// is needs to have up to date T.
-			is := is.New(t)
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
 			err := mq.ResilientPublish(ctx, tC.arg)
-			is.NoErr(err)
+			if (err != nil) != tC.wantErr {
+				t.Errorf("RabbitMQ.ResilientPublish() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
+			}
 
 			events, err := mq.Consume(ctx, "createArticle", tC.arg.Entity, tC.arg.Type)
-			is.NoErr(err)
+			if (err != nil) != tC.wantErr {
+				t.Errorf("RabbitMQ.ResilientPublish() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
+			}
 
 			event := <-events
 			if !cmp.Equal(tC.arg, event) {
-				t.Fatalf("Events are not equal, wanted: %v, received %v", tC.arg, event)
+				t.Fatalf("Events are not equal, got = %+v\n  want = %+v\n,", event, tC.arg)
 			}
-
-			received := entity.Article{}
-			err = json.Unmarshal(event.Body, &received)
-			is.NoErr(err)
-
-			is.Equal(received, article)
 		})
 	}
 }

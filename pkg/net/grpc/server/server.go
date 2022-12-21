@@ -3,17 +3,20 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/event"
-	"github.com/krixlion/dev-forum_article/pkg/log"
+	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 	"github.com/krixlion/dev-forum_article/pkg/net/rabbitmq"
 	"github.com/krixlion/dev-forum_article/pkg/storage"
 	"github.com/krixlion/dev-forum_article/pkg/storage/cmd"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
+	"github.com/krixlion/dev-forum_article/pkg/tracing"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,7 +26,7 @@ type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
 	storage      storage.Storage
 	eventHandler event.Handler
-	logger       log.Logger
+	logger       logging.Logger
 }
 
 // MakeArticleServer reads connection data from the environment
@@ -43,7 +46,8 @@ func MakeArticleServer() ArticleServer {
 	mq_user := os.Getenv("MQ_USER")
 	mq_pass := os.Getenv("MQ_PASS")
 
-	consumer := "article-service"
+	consumer := tracing.ServiceName
+
 	config := rabbitmq.Config{
 		QueueSize:         100,
 		ReconnectInterval: time.Second * 2,
@@ -52,9 +56,13 @@ func MakeArticleServer() ArticleServer {
 		ClosedTimeout:     time.Second * 15,
 	}
 
-	logger, _ := log.NewLogger()
+	logger, _ := logging.NewLogger()
 	cmd := cmd.MakeDB(cmd_port, cmd_host, cmd_user, cmd_pass)
-	query := query.MakeDB(query_host, query_port, query_pass)
+	query, err := query.MakeDB(query_host, query_port, query_pass)
+
+	if err != nil {
+		panic(err)
+	}
 
 	return ArticleServer{
 		storage:      storage.NewStorage(cmd, query, logger),
@@ -64,21 +72,38 @@ func MakeArticleServer() ArticleServer {
 }
 
 func (s ArticleServer) Close() error {
-	s.eventHandler.Close()
-	s.storage.Close()
+	var errMsg string
+	err := s.eventHandler.Close()
+	if err != nil {
+		errMsg = fmt.Sprintf("failed to close eventHandler: %s", err)
+	}
+
+	err = s.storage.Close()
+	if err != nil {
+		errMsg = fmt.Sprintf("%s, failed to close storage: %s", errMsg, err)
+	}
+
+	if errMsg != "" {
+		return errors.New(errMsg)
+	}
+
 	return nil
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
-	article := entity.MakeArticleFromPb(req.GetArticle())
-	err := s.storage.Create(ctx, article)
+	article, err := entity.ArticleFromPb(req.GetArticle())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	err = s.storage.Create(ctx, article)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	json, err := json.Marshal(article)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	event := event.Event{
@@ -90,9 +115,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 
 	s.eventHandler.ResilientPublish(ctx, event)
 
-	return &pb.CreateArticleResponse{
-		IsSuccess: true,
-	}, nil
+	return &pb.CreateArticleResponse{}, nil
 }
 
 func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (*pb.DeleteArticleResponse, error) {
@@ -115,15 +138,16 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 
 	s.eventHandler.ResilientPublish(ctx, event)
 
-	return &pb.DeleteArticleResponse{
-		IsSuccess: true,
-	}, nil
+	return &pb.DeleteArticleResponse{}, nil
 }
 
 func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (*pb.UpdateArticleResponse, error) {
-	article := entity.MakeArticleFromPb(req.GetArticle())
+	article, err := entity.ArticleFromPb(req.GetArticle())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
-	err := s.storage.Update(ctx, article)
+	err = s.storage.Update(ctx, article)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
@@ -142,9 +166,7 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 
 	s.eventHandler.ResilientPublish(ctx, event)
 
-	return &pb.UpdateArticleResponse{
-		IsSuccess: true,
-	}, nil
+	return &pb.UpdateArticleResponse{}, nil
 }
 
 func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.GetArticleResponse, error) {

@@ -1,6 +1,9 @@
 package entity
 
-import "github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
+import (
+	"github.com/gofrs/uuid"
+	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
+)
 
 type EntityName string
 
@@ -11,22 +14,26 @@ const (
 
 // This service's entity.
 type Article struct {
-	Id     string `redis:"id"`
-	UserId string `redis:"user_id"` // Author's ID.
-	Title  string `redis:"title"`
-	Body   string `redis:"body"`
+	Id     string `redis:"id" json:"id,omitempty"`
+	UserId string `redis:"user_id" json:"user_id,omitempty"` // Author's ID.
+	Title  string `redis:"title" json:"title,omitempty"`
+	Body   string `redis:"body" json:"body,omitempty"`
 }
 
-func MakeArticleFromPb(v *pb.Article) Article {
-	id := v.GetId()
+func ArticleFromPb(v *pb.Article) (Article, error) {
+	id, err := uuid.NewV4()
+	if err != nil {
+		return Article{}, err
+	}
+
 	userId := v.GetUserId()
 	title := v.GetTitle()
 	body := v.GetBody()
 
 	return Article{
-		Id:     id,
+		Id:     id.String(),
 		UserId: userId,
 		Title:  title,
 		Body:   body,
-	}
+	}, nil
 }

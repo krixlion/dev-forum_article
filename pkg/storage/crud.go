@@ -6,7 +6,7 @@ import (
 
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/event"
-	"github.com/krixlion/dev-forum_article/pkg/log"
+	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/storage/cmd"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
 )
@@ -15,10 +15,10 @@ import (
 type DB struct {
 	cmd    cmd.DB
 	query  query.DB
-	logger log.Logger
+	logger logging.Logger
 }
 
-func NewStorage(cmd cmd.DB, query query.DB, logger log.Logger) Storage {
+func NewStorage(cmd cmd.DB, query query.DB, logger logging.Logger) Storage {
 	return &DB{
 		cmd:    cmd,
 		query:  query,
