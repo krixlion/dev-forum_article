@@ -20,7 +20,7 @@ func (db DB) Close() error {
 }
 
 func (db DB) Create(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Create")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Create")
 	defer span.End()
 
 	jsonArticle, err := json.Marshal(article)
@@ -62,7 +62,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 }
 
 func (db DB) Update(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Update")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Update")
 	defer span.End()
 
 	jsonArticle, err := json.Marshal(article)
@@ -111,7 +111,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 }
 
 func (db DB) Delete(ctx context.Context, id string) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Delete")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Delete")
 	defer span.End()
 
 	jsonID, err := json.Marshal(id)
@@ -154,7 +154,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 }
 
 func (db DB) lastRevision(ctx context.Context, articleId string) (*esdb.ResolvedEvent, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "lastRevision")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.lastRevision")
 	defer span.End()
 
 	readOpts := esdb.ReadStreamOptions{

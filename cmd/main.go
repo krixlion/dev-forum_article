@@ -9,6 +9,7 @@ import (
 
 	"github.com/krixlion/dev-forum_article/cmd/service"
 	"github.com/krixlion/dev-forum_article/pkg/env"
+	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
 )
 
@@ -27,7 +28,10 @@ func main() {
 	env.Load(projectDir)
 
 	// Make InitProvider return err instead of calling log.Fatal()
-	tracing.InitProvider()
+	shutdownTracing, err := tracing.InitProvider()
+	if err != nil {
+		logging.Log("Failed to initialize tracing", "err", err)
+	}
 
 	service := service.NewArticleService(port)
 	service.Run()
@@ -39,11 +43,12 @@ func main() {
 	log.Println("Service shutting down")
 
 	defer func() {
+		shutdownTracing()
 		err := service.Close()
 		if err != nil {
-			log.Println("Failed to shutdown service")
+			logging.Log("Failed to shutdown service", "err", err)
 		} else {
-			log.Println("Service exitedp properly")
+			logging.Log("Service exited properly")
 		}
 	}()
 }

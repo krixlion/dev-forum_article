@@ -13,7 +13,7 @@ import (
 
 // ResilientPublish returns an error only if the queue is full or if it failed to serialize the event.
 func (mq *RabbitMQ) ResilientPublish(ctx context.Context, e event.Event) error {
-	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "ResilientPublish")
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.ResilientPublish")
 	defer span.End()
 
 	msg := makeMessageFromEvent(e)
@@ -47,7 +47,7 @@ func (mq *RabbitMQ) tryToEnqueue(ctx context.Context, message Message, err error
 }
 
 func (mq *RabbitMQ) publishPipelined(ctx context.Context, messages <-chan Message) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "publishPipelined")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.publishPipelined")
 	defer span.End()
 
 	go func() {
@@ -101,7 +101,7 @@ func (mq *RabbitMQ) publishPipelined(ctx context.Context, messages <-chan Messag
 }
 
 func (mq *RabbitMQ) prepareExchangePipelined(ctx context.Context, msgs <-chan Message) <-chan Message {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "prepareExchangePipelined")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.prepareExchangePipelined")
 	defer span.End()
 
 	preparedMessages := make(chan Message)

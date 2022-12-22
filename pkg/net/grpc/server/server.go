@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/logging"
@@ -91,10 +92,13 @@ func (s ArticleServer) Close() error {
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
-	article, err := entity.ArticleFromPb(req.GetArticle())
+	article := entity.ArticleFromPb(req.GetArticle())
+	id, err := uuid.NewV4()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	// Assign new UUID to article
+	article.Id = id.String()
 
 	err = s.storage.Create(ctx, article)
 	if err != nil {
@@ -142,12 +146,9 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 }
 
 func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (*pb.UpdateArticleResponse, error) {
-	article, err := entity.ArticleFromPb(req.GetArticle())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	article := entity.ArticleFromPb(req.GetArticle())
 
-	err = s.storage.Update(ctx, article)
+	err := s.storage.Update(ctx, article)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}

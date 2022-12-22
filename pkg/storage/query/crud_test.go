@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/krixlion/dev-forum_article/pkg/entity"
@@ -32,7 +33,9 @@ func setUpDB() query.DB {
 		log.Fatalf("Failed to make DB, err: %s", err)
 	}
 
-	err = db.Ping(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	err = db.Ping(ctx)
 	if err != nil {
 		log.Fatalf("Failed to ping to DB: %v", err)
 	}
@@ -40,7 +43,7 @@ func setUpDB() query.DB {
 	return db
 }
 
-func TestCRUDOnSimpleData(t *testing.T) {
+func TestCRUD(t *testing.T) {
 	db := setUpDB()
 	defer db.Close()
 
@@ -56,7 +59,7 @@ func TestCRUDOnSimpleData(t *testing.T) {
 	}
 	testCases := []testCase{
 		{
-			desc: "Check if created article is later returned correctly.",
+			desc: "Check if created article is later returned and deleted correctly.",
 			arg:  article,
 			want: article,
 		},
@@ -64,11 +67,14 @@ func TestCRUDOnSimpleData(t *testing.T) {
 
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			if err := db.Create(context.Background(), article); (err != nil) != tC.wantCreateErr {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			if err := db.Create(ctx, article); (err != nil) != tC.wantCreateErr {
 				t.Errorf("db.Create() err = %v", err)
 			}
 
-			got, err := db.Get(context.Background(), article.Id)
+			got, err := db.Get(ctx, article.Id)
 			if (err != nil) != tC.wantGetErr {
 				t.Errorf("db.Get() err = %v", err)
 			}
@@ -77,7 +83,7 @@ func TestCRUDOnSimpleData(t *testing.T) {
 				t.Errorf("Articles are not equal, got = %+v\n, want = %+v\n", got, tC.want)
 			}
 
-			if err := db.Delete(context.Background(), article.Id); (err != nil) != tC.wantDelErr {
+			if err := db.Delete(ctx, article.Id); (err != nil) != tC.wantDelErr {
 				t.Errorf("db.Delete() err = %v", err)
 			}
 		})

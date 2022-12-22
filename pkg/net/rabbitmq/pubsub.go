@@ -13,7 +13,7 @@ import (
 )
 
 func (mq *RabbitMQ) Publish(ctx context.Context, e event.Event) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Publish")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Publish")
 	defer span.End()
 
 	msg := makeMessageFromEvent(e)
@@ -37,7 +37,7 @@ func (mq *RabbitMQ) Publish(ctx context.Context, e event.Event) error {
 
 // prepareExchange validates a message and declares a RabbitMQ exchange derived from the message.
 func (mq *RabbitMQ) prepareExchange(ctx context.Context, msg Message) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "prepareExchange")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.prepareExchange")
 	defer span.End()
 
 	ch := mq.channel()
@@ -80,7 +80,7 @@ func (mq *RabbitMQ) prepareExchange(ctx context.Context, msg Message) error {
 }
 
 func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "publish")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.publish")
 	defer span.End()
 
 	ch := mq.channel()
@@ -125,7 +125,7 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 }
 
 func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.EntityName, eType event.EventType) (<-chan event.Event, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Consume")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Consume")
 	defer span.End()
 
 	events := make(chan event.Event)

@@ -30,8 +30,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 500M
+          cpus: '2'
+          memory: 750M
         reservations:
           cpus: '0.25'
           memory: 20M
@@ -137,6 +137,7 @@ services:
       # - "13133:13133" # health_check extension
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP http receiver
+      - "8889:8889"
       # - "55679:55679" # zpages extension
     volumes:
       - ./config/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml
@@ -168,7 +169,7 @@ services:
       resources:
         limits:
           cpus: '0.25'
-          memory: 60M
+          memory: 80M
         reservations:
           cpus: '0.1'
           memory: 20M
@@ -183,9 +184,6 @@ services:
       xpack.security.enrollment.enabled: false
     volumes:
       - elasticsearch:/usr/share/elasticsearch/data
-    ports:
-      - "${ES_PORT}:9200"
-      - "9300:9300"
     deploy:
       resources:
         limits:
@@ -247,6 +245,7 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.40
+    container_name: jeager
     volumes:
       - "./config/otel/jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
     command: --query.ui-config /etc/jaeger/jaeger-ui.json
@@ -265,6 +264,7 @@ services:
           memory: 20M
   
   prometheus:
+    container_name: prometheus
     image: prom/prometheus:v2.41.0
     volumes:
       - "./config/otel/prometheus.yml:/etc/prometheus/prometheus.yml"
@@ -281,6 +281,7 @@ services:
 
   grafana:
     image: grafana/grafana:9.3.2
+    container_name:  grafana
     volumes:
       - ./config/otel/grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./config/otel/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml

@@ -24,6 +24,11 @@ func MakeDB(host, port, pass string) (DB, error) {
 		return DB{}, err
 	}
 
+	err = redisotel.InstrumentTracing(rdb)
+	if err != nil {
+		return DB{}, err
+	}
+
 	return DB{
 		redis: rdb,
 	}, nil

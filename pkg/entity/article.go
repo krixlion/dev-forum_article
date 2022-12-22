@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"github.com/gofrs/uuid"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 )
 
@@ -20,20 +19,16 @@ type Article struct {
 	Body   string `redis:"body" json:"body,omitempty"`
 }
 
-func ArticleFromPb(v *pb.Article) (Article, error) {
-	id, err := uuid.NewV4()
-	if err != nil {
-		return Article{}, err
-	}
-
+func ArticleFromPb(v *pb.Article) Article {
+	id := v.GetId()
 	userId := v.GetUserId()
 	title := v.GetTitle()
 	body := v.GetBody()
 
 	return Article{
-		Id:     id.String(),
+		Id:     id,
 		UserId: userId,
 		Title:  title,
 		Body:   body,
-	}, nil
+	}
 }

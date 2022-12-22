@@ -90,7 +90,7 @@ func NewRabbitMQ(consumer, user, pass, host, port string, config Config) *Rabbit
 //
 // Do not forget to Close() in order to shutdown the system.
 func (mq *RabbitMQ) Run() error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(mq.ctx, "Run")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(mq.ctx, "rabbitmq.Run")
 	defer span.End()
 
 	if err := mq.dial(); err != nil {
@@ -133,7 +133,7 @@ func (mq *RabbitMQ) Close() error {
 }
 
 func (mq *RabbitMQ) runPublishQueue(ctx context.Context) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "runPublishQueue")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.runPublishQueue")
 	defer span.End()
 
 	preparedMessages := mq.prepareExchangePipelined(ctx, mq.publishQueue)
@@ -142,7 +142,7 @@ func (mq *RabbitMQ) runPublishQueue(ctx context.Context) {
 
 // handleChannelReads is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "handleChannelReads")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.handleChannelReads")
 	defer span.End()
 
 	for {
@@ -177,7 +177,7 @@ func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
 
 // handleConnectionErrors is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleConnectionErrors(ctx context.Context) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "handleConnectionErrors")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.handleConnectionErrors")
 	defer span.End()
 
 	for {

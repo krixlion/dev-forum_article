@@ -13,7 +13,7 @@ import (
 
 // Subscribe blocks.
 func (db DB) Subscribe(ctx context.Context, fn event.HandlerFunc) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Subscribe")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Subscribe")
 	defer span.End()
 
 	options := esdb.SubscribeToStreamOptions{

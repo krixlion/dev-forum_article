@@ -23,7 +23,7 @@ func (db DB) Close() error {
 }
 
 func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Get")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Get")
 	defer span.End()
 
 	id = addArticlesPrefix(id)
@@ -40,7 +40,7 @@ func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
 }
 
 func (db DB) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "GetMultiple")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.GetMultiple")
 	defer span.End()
 
 	off, err := strconv.ParseInt(offset, 10, 0)
@@ -92,7 +92,7 @@ func (db DB) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Ar
 }
 
 func (db DB) Create(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Get")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Get")
 	defer span.End()
 
 	prefixedId := addArticlesPrefix(article.Id)
@@ -118,14 +118,14 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 }
 
 func (db DB) Update(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Update")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Update")
 	defer span.End()
 
 	return db.Create(ctx, article)
 }
 
 func (db DB) Delete(ctx context.Context, id string) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Delete")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Delete")
 	defer span.End()
 
 	return db.redis.Del(ctx, id).Err()
