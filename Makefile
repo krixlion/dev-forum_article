@@ -45,13 +45,13 @@ k8s-test-gen-coverage:
 	$(k8s) exec -it deploy/article-d -- go tool cover -html cover.out -o cover.html
 
 k8s-run-dev:
-	- $(k8s) delete -R -f k8s/dev/resources
-	$(k8s) apply -R -f k8s/dev/resources
+	- $(k8s) delete -R -f deployment/k8s/dev/resources/
+	$(k8s) apply -R -f deployment/k8s/dev/resources/
 
 k8s-setup-tools:
-	kubectl apply -f k8s/dev/dev-namespace.yml
-	kubectl apply -R -f k8s/dev/kubernetes-dashboard.yml
-	kubectl apply -R -f k8s/dev/metrics-server.yml
+	kubectl apply -f deployment/k8s/dev/dev-namespace.yml
+	kubectl apply -R -f deployment/k8s/dev/kubernetes-dashboard.yml
+	kubectl apply -R -f deployment/k8s/dev/metrics-server.yml
 
 k8s-setup-telemetry:
-	$(k8s) apply -R -f k8s/dev/instrumentation/
+	$(k8s) apply -R -f deployment/k8s/dev/instrumentation/
