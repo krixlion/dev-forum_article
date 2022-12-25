@@ -39,8 +39,8 @@ func NewArticleService(grpcPort int) *ArticleService {
 	return s
 }
 
-func (service *ArticleService) Run() {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(context.Background(), "Run")
+func (service *ArticleService) Run(ctx context.Context) {
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Run")
 	defer span.End()
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", service.grpcPort))

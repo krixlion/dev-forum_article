@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -34,21 +34,20 @@ func main() {
 	}
 
 	service := service.NewArticleService(port)
-	service.Run()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	service.Run(ctx)
 
-	sigExitC := make(chan os.Signal, 1)
-	signal.Notify(sigExitC, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-
-	<-sigExitC
-	log.Println("Service shutting down")
+	<-ctx.Done()
+	logging.Log("Service shutting down")
 
 	defer func() {
+		cancel()
 		shutdownTracing()
 		err := service.Close()
 		if err != nil {
 			logging.Log("Failed to shutdown service", "err", err)
 		} else {
-			logging.Log("Service exited properly")
+			logging.Log("Service shutdown properly")
 		}
 	}()
 }
