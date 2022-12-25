@@ -128,5 +128,11 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Delete")
 	defer span.End()
 
-	return db.redis.Del(ctx, id).Err()
+	_, err := db.redis.TxPipelined(ctx, func(p redis.Pipeliner) error {
+		id = addArticlesPrefix(id)
+		db.redis.Del(ctx, id).Result()
+		return nil
+	})
+
+	return err
 }

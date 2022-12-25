@@ -60,7 +60,7 @@ func TestPubSub(t *testing.T) {
 	mq, tearDown := setUpMQ()
 	tearDown()
 
-	article := gentest.RandomArticle()
+	article := gentest.RandomArticle(3, 5)
 	data, err := json.Marshal(article)
 	if err != nil {
 		t.Fatalf("Failed to marshal article, input: %+v, err: %s", article, err)
@@ -109,7 +109,7 @@ func TestPubSubPipeline(t *testing.T) {
 	mq, tearDown := setUpMQ()
 	tearDown()
 
-	article := gentest.RandomArticle()
+	article := gentest.RandomArticle(3, 5)
 	data, err := json.Marshal(article)
 	if err != nil {
 		t.Fatalf("Failed to marshal article, input = %+v\n, err = %s", article, err)

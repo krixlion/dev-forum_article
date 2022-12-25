@@ -47,7 +47,7 @@ func TestCRUD(t *testing.T) {
 	db := setUpDB()
 	defer db.Close()
 
-	article := gentest.RandomArticle()
+	article := gentest.RandomArticle(3, 5)
 
 	type testCase struct {
 		desc          string
@@ -85,6 +85,14 @@ func TestCRUD(t *testing.T) {
 
 			if err := db.Delete(ctx, article.Id); (err != nil) != tC.wantDelErr {
 				t.Errorf("db.Delete() err = %v", err)
+			}
+
+			v, err := db.Get(ctx, article.Id)
+			if err != nil {
+				t.Fatalf("Failed to db.Get() after db.Del(), err = %v", err)
+			}
+			if !cmp.Equal(v, entity.Article{}) {
+				t.Errorf("Failed to delete article after testing, got = %v, want = %v", v, entity.Article{})
 			}
 		})
 	}

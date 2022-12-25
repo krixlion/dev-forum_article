@@ -14,7 +14,7 @@ import (
 
 func Test_makeMessageFromEvent(t *testing.T) {
 
-	jsonArticle := gentest.RandomJSONArticle()
+	jsonArticle := gentest.RandomJSONArticle(3, 5)
 	e := event.Event{
 		Entity:    entity.ArticleEntity,
 		Type:      event.Created,

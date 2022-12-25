@@ -19,23 +19,23 @@ func RandomString(length int) string {
 
 // RandomArticle panics on hardware error.
 // It should be used ONLY for testing.
-func RandomArticle() entity.Article {
+func RandomArticle(titleLen, bodyLen int) entity.Article {
 	id := uuid.Must(uuid.NewV4())
 	userId := uuid.Must(uuid.NewV4())
 
 	return entity.Article{
 		Id:     id.String(),
 		UserId: userId.String(),
-		Title:  RandomString(1),
-		Body:   RandomString(1),
+		Title:  RandomString(titleLen),
+		Body:   RandomString(bodyLen),
 	}
 }
 
 // RandomArticle returns a random article marshaled
 // to JSON and panics on error.
 // It should be used ONLY for testing.
-func RandomJSONArticle() []byte {
-	article := RandomArticle()
+func RandomJSONArticle(titleLen, bodyLen int) []byte {
+	article := RandomArticle(titleLen, bodyLen)
 	json, err := json.Marshal(article)
 	if err != nil {
 		panic(err)
