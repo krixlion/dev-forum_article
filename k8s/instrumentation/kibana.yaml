@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev
+  labels:
+    instrumentation: kibana
+  name: kibana-d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      instrumentation: kibana
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      namespace: dev
+      labels:
+        instrumentation: kibana
+    spec:
+      containers:
+        - image: 'docker.elastic.co/kibana/kibana:8.5.3'
+          name: kibana
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: http://elasticsearch-service:9200
+            - name: ELASTICSEARCH_PASSWORD
+              value: changeme
+            - name: ELASTICSEARCH_USERNAME
+              value: admin
+          ports:
+            - containerPort: 5601
+          resources:
+            limits:
+              cpu: 500m
+              memory: 750Mi
+            requests:
+              cpu: 250m
+              memory: 100Mi
+          volumeMounts:
+            - mountPath: /usr/share/kibana/data
+              name: kibana
+      restartPolicy: Always
+      volumes:
+        - name: kibana
+          persistentVolumeClaim:
+            claimName: kibana
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: dev
+  labels:
+    instrumentation: kibana
+  name: kibana
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dev
+  labels:
+    instrumentation: kibana
+  name: kibana-service
+spec:
+  type: LoadBalancer
+  selector:
+    instrumentation: kibana
+  ports:
+    - name: http
+      port: 5601
+      targetPort: 5601

@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: dev
+  labels:
+    database: eventstore
+    aggregate: article
+    version: v0.1.0
+  name: eventstore-cluster
+spec:
+  serviceName: eventstore-service
+  replicas: 1
+  selector:
+    matchLabels:
+      database: eventstore
+      aggregate: article
+      version: v0.1.0
+  volumeClaimTemplates:
+  - metadata:
+      name: eventstore-data
+      namespace: dev
+      labels:
+        version: v0.1.0
+        database: eventstore
+        aggregate: article
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      # storageClassName: hostpath
+      resources:
+        requests:
+          storage: 300Mi
+  template:
+    metadata:
+      namespace: dev
+      labels:
+        database: eventstore
+        aggregate: article
+        version: v0.1.0
+    spec:
+      containers:
+        - image: eventstore/eventstore:22.10.0-buster-slim
+          name: eventstore
+          ports: 
+            - name: grpc
+              containerPort: 2113
+              protocol: TCP
+          env:
+            - name: EVENTSTORE_CLUSTER_SIZE
+              value: "1"
+            - name: EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP
+              value: "true"
+            - name: EVENTSTORE_HTTP_PORT
+              value: "2113"
+            - name: EVENTSTORE_INSECURE
+              value: "true"
+            - name: EVENTSTORE_RUN_PROJECTIONS
+              value: All
+            - name: EVENTSTORE_START_STANDARD_PROJECTIONS
+              value: "true"
+          resources:
+            limits:
+              cpu: 750m
+              memory: 500Mi
+            requests:
+              cpu: 250m
+              memory: 100Mi
+          volumeMounts:
+            - mountPath: /var/lib/eventstore
+              name: eventstore-data
+      restartPolicy: Always
+---
+kind: Service
+apiVersion: v1
+metadata:
+  namespace: dev
+  name: eventstore-service
+  labels:
+    aggregate: article
+    database: eventstore
+    version: v0.1.0
+spec:
+  selector:
+    aggregate: article
+    database: eventstore
+    version: v0.1.0
+  clusterIP: None
+  ports:
+    - name: http-rest
+      port: 9200
+      protocol: TCP
+    - name: inter-node
+      port: 9300
+      protocol: TCP

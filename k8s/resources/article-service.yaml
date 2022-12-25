@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dev
+  name: article-service
+  labels:
+    app: article
+    aggregate: article
+    version: v0.1.0
+spec:
+  type: LoadBalancer
+  selector:
+    app: article
+    aggregate: article
+    version: v0.1.0
+  ports:
+  - name: grpc
+    protocol: TCP
+    port: 50051
+    targetPort: 50051
+  - name: delve
+    protocol: TCP
+    port: 2345
+    targetPort: 2345
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev
+  labels:
+    app: article
+    aggregate: article
+    version: v0.1.0
+  name: article-d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: article
+      aggregate: article
+      version: v0.1.0
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: article
+        aggregate: article
+        version: v0.1.0
+    spec:
+      restartPolicy: Always
+      containers:
+        - env:
+            - name: BUILD_ARGS
+              value: -race cmd/main.go
+            - name: DEBUG_PORT
+              value: "2345"
+            - name: RUN_ARGS
+              value: -p 50051
+          image: 'krixlion/go-reflex-dlv:1.19.3'
+          name: debug
+          ports:
+            - name: grpc
+              containerPort: 50051
+            - name: delve
+              containerPort: 2345
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 750Mi
+            requests:
+              cpu: 250m
+              memory: 50Mi
+          volumeMounts:
+            - name: hot-reload
+              mountPath: /app
+      volumes: 
+        - name: hot-reload
+          persistentVolumeClaim:
+            claimName: hot-reload-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: dev
+  name: hot-reload-pvc
+  labels:
+    app: article
+spec:
+  storageClassName: local-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: dev
+  name: hot-reload-pv
+  labels:
+    app: article
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  local:
+    # Windows is mounted in Docker desktop VM under /run/desktop/mnt/host/{drive-letter}/your/path eg:
+    # path: /run/desktop/mnt/host/c/data
+    # Wsl is mounted in Docker desktop VM under /run/desktop/mnt/host/wsl
+    # Locally in WSL it's /mnt/wsl
+    # You should bind your project with k8s-mount for the time of development. Eg:
+    #     mkdir /mnt/wsl/k8s-mount && sudo mount --bind your_project_dir /mnt/wsl/k8s-mount 
+    path: /run/desktop/mnt/host/wsl/k8s-mount
+  persistentVolumeReclaimPolicy: Delete
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - docker-desktop
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  namespace: dev
+  name: local-storage
+  labels:
+    app: article
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain

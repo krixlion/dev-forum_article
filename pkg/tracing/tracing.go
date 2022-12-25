@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -53,8 +54,14 @@ func InitProvider() (func(), error) {
 		logging.Log("Failed to create the collector metric exporter, err: %s", err)
 	}
 
+	promExporter, err := prometheus.New()
+	if err != nil {
+		logging.Log("Failed to create the prometheus metric exporter, err: %s", err)
+	}
+
 	meterProvider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(resource),
+		sdkmetric.WithReader(promExporter),
 		sdkmetric.WithReader(
 			sdkmetric.NewPeriodicReader(
 				metricExp,

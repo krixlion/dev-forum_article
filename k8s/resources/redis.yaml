@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: dev
+  name: redis-cluster
+  labels:
+    database: redis
+    aggregate: article
+    version: v0.1.0
+spec:
+  serviceName: redis-service
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+      namespace: dev
+      labels:
+        version: v0.1.0
+        database: redis
+        aggregate: article
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      # storageClassName: hostpath
+      resources:
+        requests:
+          storage: 300Mi
+  replicas: 1
+  selector:
+    matchLabels:
+      database: redis
+      aggregate: article
+      version: v0.1.0
+  template:
+    metadata:
+      namespace: dev
+      labels:
+        database: redis
+        aggregate: article
+        version: v0.1.0
+    spec:
+      containers:
+        - args:
+            - redis-server
+            - --port 6379
+          image: redis:7.0.5-alpine
+          name: redis
+          resources:
+            limits:
+              cpu: 500m
+              memory: 100Mi
+            requests:
+              cpu: 250m
+              memory: 10Mi
+          volumeMounts:
+            - mountPath: /data
+              name: redis-data
+            # - mountPath: /usr/local/etc/redis/redis.conf
+            #   name: redis-claim0
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dev
+  name: redis-service
+  labels:
+    database: redis
+    aggregate: article
+    version: v0.1.0
+spec:
+  selector:
+    database: redis
+    aggregate: article
+    version: v0.1.0
+  ports:
+  - port: 6379
+    targetPort: 6379

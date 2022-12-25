@@ -189,15 +189,15 @@ func (mq *RabbitMQ) handleConnectionErrors(ctx context.Context) error {
 			}
 
 			for {
+				mq.logger.Log(ctx, "Reconnecting to RabbitMQ")
 				err := mq.dial()
 				if err == nil {
 					break
 				}
-
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
+				mq.logger.Log(ctx, "Failed to connect to RabbitMQ", "err", err)
 
-				mq.logger.Log(ctx, "Reconnecting to RabbitMQ")
 				time.Sleep(mq.config.ReconnectInterval)
 			}
 

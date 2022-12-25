@@ -1,0 +1,99 @@
+kind: Service
+apiVersion: v1
+metadata:
+  namespace: dev
+  name: elasticsearch-service
+  labels:
+    instrumentation: elasticsearch
+spec:
+  selector:
+    instrumentation: elasticsearch
+  clusterIP: None
+  ports:
+    - port: 9200
+      name: http-rest
+    - port: 9300
+      name: inter-node
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: dev
+  name: es-cluster
+  labels:
+    instrumentation: elasticsearch
+spec:
+  serviceName: elasticsearch
+  replicas: 1
+  selector:
+    matchLabels:
+      instrumentation: elasticsearch
+  volumeClaimTemplates:
+  - metadata:
+      name: es-data
+      labels:
+        instrumentation: elasticsearch
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      # storageClassName: hostpath
+      resources:
+        requests:
+          storage: 500Mi
+  template:
+    metadata:
+      labels:
+        instrumentation: elasticsearch
+    spec:
+      containers:
+        - image: 'docker.elastic.co/elasticsearch/elasticsearch:8.5.3'
+          name: elasticsearch
+          env:
+            - name: cluster.name
+              value: k8s-logs
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: ELASTIC_PASSWORD
+              value: changeme
+            - name: discovery.type
+              value: single-node
+            - name: xpack.security.enabled
+              value: "false"
+            - name: xpack.security.enrollment.enabled
+              value: "false"
+          ports:
+            - name: http-rest
+              containerPort: 9200
+            - name: inter-node
+              containerPort: 9300
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 250Mi
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: es-data
+      restartPolicy: Always
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: es-data
+            mountPath: /usr/share/elasticsearch/data
+        - name: increase-vm-max-map
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+        - name: increase-fd-ulimit
+          image: busybox
+          command: ["sh", "-c", "ulimit -n 65536"]
+          securityContext:
+            privileged: true

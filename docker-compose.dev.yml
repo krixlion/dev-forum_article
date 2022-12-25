@@ -193,34 +193,6 @@ services:
           cpus: '0.25'
           memory: 20M
           
-  # apm-server:
-  #   image: docker.elastic.co/apm/apm-server:${STACK_VERSION}
-  #   container_name: apm-server
-  #   cap_add: ["CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID"]
-  #   cap_drop: ["ALL"]
-  #   ports:
-  #   - 8200:8200
-  #   command: >
-  #     apm-server -e
-  #       -E apm-server.rum.enabled=true
-  #       -E setup.kibana.host=kibana:5601
-  #       -E setup.template.settings.index.number_of_replicas=0
-  #       -E apm-server.kibana.enabled=true
-  #       -E apm-server.kibana.host=kibana:5601
-  #       -E output.elasticsearch.hosts=["elasticsearch:${ES_PORT}"]
-  #       -E output.elasticsearch.protocol=http
-  #       -E output.elasticsearch.username=admin
-  #       -E output.elasticsearch.password=$ELASTIC_PASSWORD
-  #       -E output.elasticsearch.ssl.verification_mode=none
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.25'
-  #         memory: 50M
-  #       reservations:
-  #         cpus: '0.1'
-  #         memory: 20M
-
   kibana:
     image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
     container_name: kibana

@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev
+  labels:
+    instrumentation: otel-collector
+  name: otel-collector-d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      instrumentation: otel-collector
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      namespace: dev
+      labels:
+        instrumentation: otel-collector
+    spec:
+      containers:
+        - args:
+            - --config=/etc/otel-collector-config.yaml
+          image: otel/opentelemetry-collector:0.67.0
+          name: otel-collector
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+            - containerPort: 8889
+          resources:
+            limits:
+              cpu: 750m
+              memory: 50Mi
+            requests:
+              cpu: 250m
+              memory: 10Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel-collector-config.yaml
+              subPath: otel-collector-config.yaml
+      restartPolicy: Always
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+            
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dev
+  labels:
+    instrumentation: otel-collector
+  name: otel-collector-service
+spec:
+  ports:
+    - name: grpc
+      port: 4317
+      targetPort: 4317
+    - name: http
+      port: 4318
+      targetPort: 4318
+    - name: exporter
+      port: 8889
+      targetPort: 8889
+  selector:
+    instrumentation: otel-collector
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  labels:
+    instrumentation: otel-collector
+  namespace: dev
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+
+    exporters:
+
+      logging:
+          
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+
+      jaeger:
+        endpoint: "jaeger-service:14250"
+        tls:
+          insecure: true
+
+    processors: 
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 2000
+      batch:
+
+    extensions:
+      health_check:
+      pprof:
+        endpoint: :1888
+      zpages:
+        endpoint: :55679
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [logging, prometheus]
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [jaeger]

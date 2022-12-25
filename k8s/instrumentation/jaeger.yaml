@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev
+  labels:
+    instrumentation: jaeger
+  name: jaeger-d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      instrumentation: jaeger
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      namespace: dev
+      labels:
+        instrumentation: jaeger
+    spec:
+      containers:
+        - args:
+            - --query.ui-config
+            - /etc/jaeger/jaeger-ui.json
+          env:
+            - name: METRICS_STORAGE_TYPE
+              value: prometheus
+            - name: PROMETHEUS_SERVER_URL
+              value: http://prometheus-service:9090
+          image: jaegertracing/all-in-one:1.40
+          name: jeager
+          ports:
+            - containerPort: 16686
+            - containerPort: 14250
+          resources:
+            limits:
+              cpu: 200m
+              memory: 40Mi
+            requests:
+              cpu: 50m
+              memory: 20Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/jaeger/jaeger-ui.json
+              subPath: jaeger-ui.json
+      restartPolicy: Always
+      volumes:
+        - name: config
+          configMap:
+            name: jaeger-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dev
+  labels:
+    instrumentation: jaeger
+  name: jaeger-ui-service
+spec:
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 16686
+      targetPort: 16686
+  selector:
+    instrumentation: jaeger
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dev
+  labels:
+    instrumentation: jaeger
+  name: jaeger-service
+spec:
+  ports:
+    - name: traces
+      port: 14250
+      targetPort: 14250
+  selector:
+    instrumentation: jaeger
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jaeger-config
+  labels:
+    instrumentation: jaeger
+  namespace: dev
+data:
+  jaeger-ui.json: |
+    {
+        "monitor": {
+          "menuEnabled": true
+        },
+        "dependencies": {
+          "menuEnabled": true
+        }
+      }
