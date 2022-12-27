@@ -42,12 +42,16 @@ func (mq *RabbitMQ) publishPipelined(ctx context.Context, messages <-chan Messag
 		channel := mq.channel()
 		defer channel.Close()
 
+		limiter := make(chan struct{}, mq.config.MaxWorkers)
+
 		for {
 			select {
 			case message := <-messages:
+				limiter <- struct{}{}
 				go func() {
 					ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.publishPipelined")
 					defer span.End()
+					defer func() { <-limiter }()
 
 					callSucceded, err := mq.breaker.Allow()
 					if err != nil {
@@ -95,13 +99,16 @@ func (mq *RabbitMQ) prepareExchangePipelined(ctx context.Context, msgs <-chan Me
 	go func() {
 		channel := mq.channel()
 		defer channel.Close()
+		limiter := make(chan struct{}, mq.config.MaxWorkers)
 
 		for {
 			select {
 			case message := <-msgs:
+				limiter <- struct{}{}
 				go func() {
 					ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.prepareExchangePipelined")
 					defer span.End()
+					defer func() { <-limiter }()
 
 					callSucceded, err := mq.breaker.Allow()
 					if err != nil {

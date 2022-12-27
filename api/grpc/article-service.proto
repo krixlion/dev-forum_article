@@ -20,7 +20,9 @@ message CreateArticleRequest {
     Article article = 1;
 }
 
-message CreateArticleResponse {}
+message CreateArticleResponse {
+    string id = 1 ;
+}
 
 message UpdateArticleRequest {
     Article article = 1;

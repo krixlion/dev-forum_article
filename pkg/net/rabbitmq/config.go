@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	QueueSize         int           // Max number of messages internally queued for publishing.
+	MaxWorkers        int           // Max number of concurrent workers.
 	ReconnectInterval time.Duration // Time between reconnect attempts.
 
 	// Settings for the internal circuit breaker.

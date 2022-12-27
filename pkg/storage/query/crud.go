@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/go-redis/redis/v9"
@@ -119,12 +120,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	prefixedId := addArticlesPrefix(article.Id)
 
 	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		values := map[string]interface{}{
-			"id":      article.Id,
-			"user_id": article.UserId,
-			"title":   article.Title,
-			"body":    article.Body,
-		}
+		values := mapArticle(article)
 		db.redis.HSet(ctx, prefixedId, values)
 		db.redis.SAdd(ctx, articlesPrefix, article.Id)
 		return nil
@@ -187,4 +183,17 @@ func scan(s scanCmder, dest ...interface{}) error {
 
 func addArticlesPrefix(key string) string {
 	return fmt.Sprintf("%s:%s", articlesPrefix, key)
+}
+
+func mapArticle(article entity.Article) map[string]string {
+	v := reflect.ValueOf(article)
+	values := map[string]string{}
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		if s := field.String(); s != "" {
+			values[field.Type().Name()] = s
+		}
+	}
+	return values
 }

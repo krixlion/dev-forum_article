@@ -209,12 +209,16 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 	callSucceded(true)
 
 	go func() {
+		limiter := make(chan struct{}, mq.config.MaxWorkers)
+
 		for {
 			select {
 			case message := <-messages:
+				limiter <- struct{}{}
 				go func() {
 					ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Consume")
 					defer span.End()
+					defer func() { <-limiter }()
 
 					event := event.Event{}
 					if message.ContentType == string(ContentTypeJson) {

@@ -52,6 +52,7 @@ func MakeArticleServer() ArticleServer {
 
 	config := rabbitmq.Config{
 		QueueSize:         100,
+		MaxWorkers:        100,
 		ReconnectInterval: time.Second * 2,
 		MaxRequests:       30,
 		ClearInterval:     time.Second * 5,
@@ -135,7 +136,9 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 		s.logger.Log(ctx, "Failed to publish event", "err", err)
 	}
 
-	return &pb.CreateArticleResponse{}, nil
+	return &pb.CreateArticleResponse{
+		Id: id.String(),
+	}, nil
 }
 
 func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (*pb.DeleteArticleResponse, error) {

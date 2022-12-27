@@ -48,6 +48,7 @@ type RabbitMQ struct {
 //		// You can use rabbitmq.DefaultConfig() instead.
 //		config := Config{
 //			QueueSize:         100,             // Max number of messages internally queued for publishing.
+//			MaxWorkers:        100,           	// Max number of concurrent workers.
 //			ReconnectInterval: time.Second * 2, // Time between reconnect attempts.
 //			MaxRequests:       5,               // Number of requests allowed to half-open state.
 //			ClearInterval:     time.Second * 5, // Time after which failed calls count is cleared.
@@ -128,13 +129,15 @@ func (mq *RabbitMQ) runPublishQueue(ctx context.Context) {
 
 // handleChannelReads is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
+	limiter := make(chan struct{}, mq.config.MaxWorkers)
 	for {
 		select {
 		case req := <-mq.readChannel:
+			limiter <- struct{}{}
 			go func() {
 				ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.handleChannelRead")
 				defer span.End()
-
+				defer func() { <-limiter }()
 				succedeed, err := mq.breaker.Allow()
 				if err != nil {
 					req <- nil
