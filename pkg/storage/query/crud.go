@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -9,30 +10,25 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 )
 
 const articlesPrefix = "articles"
-
-func addArticlesPrefix(key string) string {
-	return fmt.Sprintf("%s:%s", articlesPrefix, key)
-}
 
 func (db DB) Close() error {
 	return db.redis.Close()
 }
 
 func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Get")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Get")
 	defer span.End()
 
 	id = addArticlesPrefix(id)
 	article := entity.Article{}
 
-	err := db.redis.HGetAll(ctx, id).Scan(&article)
+	cmd := db.redis.HGetAll(ctx, id)
+	err := scan(cmd, &article)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return entity.Article{}, err
 	}
 
@@ -40,7 +36,7 @@ func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
 }
 
 func (db DB) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.GetMultiple")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.GetMultiple")
 	defer span.End()
 
 	off, err := strconv.ParseInt(offset, 10, 0)
@@ -50,8 +46,7 @@ func (db DB) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Ar
 
 	count, err := strconv.ParseInt(limit, 10, 0)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 
@@ -79,20 +74,21 @@ func (db DB) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Ar
 
 	for _, cmd := range commands {
 		article := entity.Article{}
-		err := cmd.Scan(&article)
+		err := scan(cmd, &article)
 		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
+			if errors.Is(err, redis.Nil) {
+				continue
+			}
+			tracing.SetSpanErr(span, err)
 			return nil, err
 		}
 		articles = append(articles, article)
-
 	}
 	return articles, nil
 }
 
 func (db DB) Create(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Get")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Create")
 	defer span.End()
 
 	prefixedId := addArticlesPrefix(article.Id)
@@ -110,22 +106,39 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	})
 
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 	return nil
 }
 
 func (db DB) Update(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Update")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Update")
 	defer span.End()
 
-	return db.Create(ctx, article)
+	prefixedId := addArticlesPrefix(article.Id)
+
+	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		values := map[string]interface{}{
+			"id":      article.Id,
+			"user_id": article.UserId,
+			"title":   article.Title,
+			"body":    article.Body,
+		}
+		db.redis.HSet(ctx, prefixedId, values)
+		db.redis.SAdd(ctx, articlesPrefix, article.Id)
+		return nil
+	})
+
+	if err != nil {
+		tracing.SetSpanErr(span, err)
+		return err
+	}
+	return nil
 }
 
 func (db DB) Delete(ctx context.Context, id string) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "reader.Delete")
+	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Delete")
 	defer span.End()
 
 	_, err := db.redis.TxPipelined(ctx, func(p redis.Pipeliner) error {
@@ -135,4 +148,43 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	})
 
 	return err
+}
+
+type scanCmder interface {
+	Scan(dst interface{}) error
+}
+
+// scan enhances the Scan method of a scanCmder with these features:
+//   - it returns the error redis.Nil when the key does not exist. See https://github.com/go-redis/redis/issues/1668
+//   - it supports embedded struct better. See https://github.com/go-redis/redis/issues/2005#issuecomment-1019667052
+func scan(s scanCmder, dest ...interface{}) error {
+	switch cmd := s.(type) {
+	case *redis.MapStringStringCmd:
+		if len(cmd.Val()) == 0 {
+			return redis.Nil
+		}
+	case *redis.SliceCmd:
+		keyExists := false
+		for _, v := range cmd.Val() {
+			if v != nil {
+				keyExists = true
+				break
+			}
+		}
+		if !keyExists {
+			return redis.Nil
+		}
+	}
+
+	for _, d := range dest {
+		if err := s.Scan(d); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func addArticlesPrefix(key string) string {
+	return fmt.Sprintf("%s:%s", articlesPrefix, key)
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 )
 
 func (db DB) Close() error {
@@ -25,8 +24,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 
 	jsonArticle, err := json.Marshal(article)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -39,8 +37,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 
 	data, err := json.Marshal(e)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -53,8 +50,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 
 	_, err = db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -79,8 +75,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 
 	data, err := json.Marshal(e)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -102,8 +97,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 
 	_, err = db.client.AppendToStream(ctx, streamID, appendOpts, eventData)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -116,8 +110,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 
 	jsonID, err := json.Marshal(id)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -130,8 +123,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 
 	data, err := json.Marshal(e)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -145,8 +137,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	_, err = db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData)
 
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -166,16 +157,14 @@ func (db DB) lastRevision(ctx context.Context, articleId string) (*esdb.Resolved
 
 	stream, err := db.client.ReadStream(ctx, streamID, readOpts, 1)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 	defer stream.Close()
 
 	lastEvent, err := stream.Recv()
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 

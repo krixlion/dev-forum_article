@@ -3,35 +3,36 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
+	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 )
 
-// Subscribe blocks.
-func (db DB) Subscribe(ctx context.Context, fn event.HandlerFunc) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Subscribe")
-	defer span.End()
-
-	options := esdb.SubscribeToStreamOptions{
+// Subscribe listens for all events in the eventstore and invokes a
+// handlerFunc on each received event.
+// It's up to the handlerFunc to process or ignore the event.
+func (db DB) Subscribe(ctx context.Context, handle event.HandlerFunc, entity entity.EntityName, types ...event.EventType) error {
+	prefix := fmt.Sprintf("%s-", entity)
+	stream, err := db.client.SubscribeToAll(ctx, esdb.SubscribeToAllOptions{
 		From: esdb.End{},
-	}
+		Filter: &esdb.SubscriptionFilter{
+			Type:     esdb.StreamFilterType,
+			Prefixes: []string{prefix},
+		},
+	})
 
-	stream, err := db.client.SubscribeToStream(ctx, "articles", options)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		db.logger.Log(ctx, "Failed to subscribe", "err", err)
 		return err
 	}
 	defer stream.Close()
 
 	for {
 		if err := ctx.Err(); err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
 			return err
 		}
 
@@ -40,25 +41,31 @@ func (db DB) Subscribe(ctx context.Context, fn event.HandlerFunc) error {
 			continue
 		}
 
-		if err := subEvent.SubscriptionDropped.Error; err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
+		ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Subscribe")
+
+		if subEvent.SubscriptionDropped != nil {
+			err := subEvent.SubscriptionDropped.Error
+			db.logger.Log(ctx, "Subscription dropped", "err", err)
+			tracing.SetSpanErr(span, err)
 			return err
 		}
 
 		event := event.Event{}
+		data := subEvent.EventAppeared.OriginalEvent().Data
 
-		err := json.Unmarshal(subEvent.EventAppeared.OriginalEvent().Data, &event)
+		err := json.Unmarshal(data, &event)
 		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			return err
+			tracing.SetSpanErr(span, err)
+			db.logger.Log(ctx, "failed to parse event data", "err", err, "data", data)
+			// TODO: append to retry queue
+			continue
 		}
 
-		if err := fn(ctx, event); err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			return err
+		if err := handle(ctx, event); err != nil {
+			db.logger.Log(ctx, "failed to update read model", "err", err, "event", event)
+			tracing.SetSpanErr(span, err)
+			// TODO: append to retry queue
 		}
+		span.End()
 	}
 }

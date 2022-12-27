@@ -9,7 +9,6 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 )
 
 func (mq *RabbitMQ) Publish(ctx context.Context, e event.Event) error {
@@ -20,15 +19,13 @@ func (mq *RabbitMQ) Publish(ctx context.Context, e event.Event) error {
 
 	err := mq.prepareExchange(ctx, msg)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	err = mq.publish(ctx, msg)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -49,8 +46,7 @@ func (mq *RabbitMQ) prepareExchange(ctx context.Context, msg Message) error {
 
 	succeded, err := mq.breaker.Allow()
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -64,8 +60,7 @@ func (mq *RabbitMQ) prepareExchange(ctx context.Context, msg Message) error {
 		nil,              // arguments
 	)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 
 		if isConnectionError(err.(*amqp.Error)) {
 			succeded(false)
@@ -92,8 +87,7 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 
 	succeded, err := mq.breaker.Allow()
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -108,26 +102,20 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 		},
 	)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-
 		if isConnectionError(err.(*amqp.Error)) {
 			succeded(false)
 		}
 		// Error did not render broker unavailable.
 		succeded(true)
 
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 	succeded(true)
-
 	return nil
 }
 
 func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.EntityName, eType event.EventType) (<-chan event.Event, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Consume")
-	defer span.End()
-
 	events := make(chan event.Event)
 	ch := mq.channel()
 
@@ -142,8 +130,6 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 
 	callSucceded, err := mq.breaker.Allow()
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -156,9 +142,6 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 		nil,     // arguments
 	)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-
 		if isConnectionError(err.(*amqp.Error)) {
 			callSucceded(false)
 		}
@@ -175,8 +158,6 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 
 	callSucceded, err = mq.breaker.Allow()
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -188,8 +169,6 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 		nil,                // Additional args
 	)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		if isConnectionError(err.(*amqp.Error)) {
 			callSucceded(false)
 		}
@@ -206,8 +185,6 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 
 	callSucceded, err = mq.breaker.Allow()
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
@@ -221,9 +198,6 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 		nil,             // args
 	)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-
 		if isConnectionError(err.(*amqp.Error)) {
 			callSucceded(false)
 		}
@@ -238,20 +212,22 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 		for {
 			select {
 			case message := <-messages:
-				event := event.Event{}
+				go func() {
+					ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Consume")
+					defer span.End()
 
-				if message.ContentType == string(ContentTypeJson) {
-					if err := json.Unmarshal(message.Body, &event); err != nil {
-						span.RecordError(err)
-						span.SetStatus(codes.Error, err.Error())
-						mq.logger.Log(ctx, "Failed to process message", "err", err)
-						continue
+					event := event.Event{}
+					if message.ContentType == string(ContentTypeJson) {
+						if err := json.Unmarshal(message.Body, &event); err != nil {
+							tracing.SetSpanErr(span, err)
+							mq.logger.Log(ctx, "Failed to process message", "err", err)
+							return
+						}
 					}
-				}
 
-				message.Ack(false)
-				events <- event
-
+					message.Ack(false)
+					events <- event
+				}()
 			case <-ctx.Done():
 				close(events)
 				return

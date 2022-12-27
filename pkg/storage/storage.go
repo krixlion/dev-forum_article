@@ -9,7 +9,8 @@ import (
 )
 
 type Storage interface {
-	CatchUp(ctx context.Context) error
+	// CatchUp listens for new events and updates the read model.
+	ListenAndCatchUp(ctx context.Context) error
 	Reader
 	Writer
 }
@@ -27,7 +28,16 @@ type Writer interface {
 	Delete(ctx context.Context, id string) error
 }
 
+type CatchUper interface {
+	CatchUp(context.Context, event.Event) error
+}
+
 type Eventstore interface {
-	Writer
 	event.Subscriber
+	Writer
+}
+
+type Querer interface {
+	Reader
+	CatchUper
 }

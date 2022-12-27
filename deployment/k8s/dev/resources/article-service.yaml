@@ -22,6 +22,10 @@ spec:
     protocol: TCP
     port: 2345
     targetPort: 2345
+  - name: metrics
+    protocol: TCP
+    port: 2223
+    targetPort: 2223
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -64,6 +68,8 @@ spec:
               containerPort: 50051
             - name: delve
               containerPort: 2345
+            - name: metrics
+              containerPort: 2223
           resources:
             limits:
               cpu: 2000m

@@ -2,11 +2,15 @@ package tracing
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/krixlion/dev-forum_article/pkg/logging"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -17,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
 
@@ -95,16 +100,30 @@ func InitProvider() (func(), error) {
 	// set global propagator to tracecontext (the default is no-op).
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(tracerProvider)
+	go func() {
+		logging.Log("Serving metrics at localhost:2223/metrics")
+		http.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(":2223", nil)
+		if err != nil {
+			logging.Log("Failed serving http", "err", err)
+			return
+		}
+	}()
 
 	return func() {
-		cxt, cancel := context.WithTimeout(ctx, time.Second)
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
 		defer cancel()
-		if err := traceExp.Shutdown(cxt); err != nil {
+		if err := traceExp.Shutdown(ctx); err != nil {
 			otel.Handle(err)
 		}
 		// pushes any last exports to the receiver
-		if err := meterProvider.Shutdown(cxt); err != nil {
+		if err := meterProvider.Shutdown(ctx); err != nil {
 			otel.Handle(err)
 		}
 	}, nil
+}
+
+func SetSpanErr(span trace.Span, err error) {
+	span.RecordError(err)
+	span.SetStatus(codes.Error, err.Error())
 }

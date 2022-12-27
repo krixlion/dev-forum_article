@@ -28,7 +28,6 @@ func MakeDB(host, port, pass string) (DB, error) {
 	if err != nil {
 		return DB{}, err
 	}
-
 	return DB{
 		redis: rdb,
 	}, nil

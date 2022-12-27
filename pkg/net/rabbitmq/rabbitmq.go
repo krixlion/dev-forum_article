@@ -9,7 +9,6 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sony/gobreaker"
@@ -39,7 +38,7 @@ type RabbitMQ struct {
 // NewRabbitMQ returns a new connection struct.
 // Run() method needs to be invoked before any operations on this struct are performed.
 //
-//	func Example() {
+//	func example() {
 //		user := "guest"
 //		pass := "guest"
 //		host := "localhost"
@@ -90,16 +89,11 @@ func NewRabbitMQ(consumer, user, pass, host, port string, config Config) *Rabbit
 //
 // Do not forget to Close() in order to shutdown the system.
 func (mq *RabbitMQ) Run() error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(mq.ctx, "rabbitmq.Run")
-	defer span.End()
-
 	if err := mq.dial(); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 
-	errg, ctx := errgroup.WithContext(ctx)
+	errg, ctx := errgroup.WithContext(context.Background())
 
 	mq.runPublishQueue(ctx)
 
@@ -111,12 +105,7 @@ func (mq *RabbitMQ) Run() error {
 		return mq.handleChannelReads(ctx)
 	})
 
-	if err := errg.Wait(); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return err
-	}
-	return nil
+	return errg.Wait()
 }
 
 // Close active connection gracefully.
@@ -133,41 +122,42 @@ func (mq *RabbitMQ) Close() error {
 }
 
 func (mq *RabbitMQ) runPublishQueue(ctx context.Context) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.runPublishQueue")
-	defer span.End()
-
 	preparedMessages := mq.prepareExchangePipelined(ctx, mq.publishQueue)
 	mq.publishPipelined(ctx, preparedMessages)
 }
 
 // handleChannelReads is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.handleChannelReads")
-	defer span.End()
-
 	for {
 		select {
 		case req := <-mq.readChannel:
-			succedeed, err := mq.breaker.Allow()
-			if err != nil {
-				span.RecordError(err)
-				span.SetStatus(codes.Error, err.Error())
-				req <- nil
-			}
+			go func() {
+				ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.handleChannelRead")
+				defer span.End()
 
-			channel, err := mq.connection.Channel()
-			if err != nil {
-				span.RecordError(err)
-				span.SetStatus(codes.Error, err.Error())
-				req <- nil
-				mq.logger.Log(ctx, "Failed opening a new channel", "err", err)
-				succedeed(false)
-				continue
-			}
+				succedeed, err := mq.breaker.Allow()
+				if err != nil {
+					req <- nil
 
-			succedeed(true)
-			req <- channel
+					tracing.SetSpanErr(span, err)
+					return
+				}
 
+				channel, err := mq.connection.Channel()
+				if err != nil {
+					req <- nil
+
+					mq.logger.Log(ctx, "Failed to open a new channel", "err", err)
+
+					succedeed(false)
+
+					tracing.SetSpanErr(span, err)
+					return
+				}
+
+				succedeed(true)
+				req <- channel
+			}()
 		case <-ctx.Done():
 			mq.logger.Log(ctx, "Stopped listening to channel reads")
 			return ctx.Err()
@@ -177,25 +167,21 @@ func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
 
 // handleConnectionErrors is meant to be run in a seperate goroutine.
 func (mq *RabbitMQ) handleConnectionErrors(ctx context.Context) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.handleConnectionErrors")
-	defer span.End()
-
 	for {
 		select {
 		case e := <-mq.notifyConnClose:
-
 			if e == nil {
 				continue
 			}
 
 			for {
 				mq.logger.Log(ctx, "Reconnecting to RabbitMQ")
+
 				err := mq.dial()
 				if err == nil {
 					break
 				}
-				span.RecordError(err)
-				span.SetStatus(codes.Error, err.Error())
+
 				mq.logger.Log(ctx, "Failed to connect to RabbitMQ", "err", err)
 
 				time.Sleep(mq.config.ReconnectInterval)

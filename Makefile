@@ -2,8 +2,8 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
+kubernetes = kubectl -n dev
 docker-compose = docker compose -f docker-compose.dev.yml --env-file .env
-k8s = kubectl -n dev
 
 mod-init:
 	go mod init	github.com/krixlion/$(PROJECT_NAME)_$(AGGREGATE_ID)
@@ -37,16 +37,19 @@ docker-test-gen-coverage:
 
 # ------------- Kubernetes -------------
 
+k8s-mount-project:
+	mkdir /mnt/wsl/k8s-mount && sudo mount --bind . /mnt/wsl/k8s-mount
+
 k8s-test: # param: args
-	$(k8s) exec -it deploy/article-d -- go test -race ${args} ./...  
+	$(kubernetes) exec -it deploy/article-d -- go test -race ${args} ./...  
 
 k8s-test-gen-coverage:
-	$(k8s) exec -it deploy/article-d -- go test -coverprofile  cover.out ./...
-	$(k8s) exec -it deploy/article-d -- go tool cover -html cover.out -o cover.html
+	$(kubernetes) exec -it deploy/article-d -- go test -coverprofile  cover.out ./...
+	$(kubernetes) exec -it deploy/article-d -- go tool cover -html cover.out -o cover.html
 
 k8s-run-dev:
-	- $(k8s) delete -R -f deployment/k8s/dev/resources/
-	$(k8s) apply -R -f deployment/k8s/dev/resources/
+	- $(kubernetes) delete -R -f deployment/k8s/dev/resources/
+	$(kubernetes) apply -R -f deployment/k8s/dev/resources/
 
 k8s-setup-tools:
 	kubectl apply -f deployment/k8s/dev/dev-namespace.yml
@@ -54,4 +57,4 @@ k8s-setup-tools:
 	kubectl apply -R -f deployment/k8s/dev/metrics-server.yml
 
 k8s-setup-telemetry:
-	$(k8s) apply -R -f deployment/k8s/dev/instrumentation/
+	$(kubernetes) apply -R -f deployment/k8s/dev/instrumentation/

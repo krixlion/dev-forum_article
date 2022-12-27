@@ -18,6 +18,7 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/storage/cmd"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -72,6 +73,19 @@ func MakeArticleServer() ArticleServer {
 	}
 }
 
+func (s ArticleServer) Run(ctx context.Context) error {
+	errg, ctx := errgroup.WithContext(ctx)
+	errg.Go(func() error {
+		return s.eventHandler.Run()
+	})
+
+	errg.Go(func() error {
+		return s.storage.ListenAndCatchUp(ctx)
+	})
+
+	return errg.Wait()
+}
+
 func (s ArticleServer) Close() error {
 	var errMsg string
 	err := s.eventHandler.Close()
@@ -97,7 +111,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	// Assign new UUID to article
+	// Assign new UUID to article about to be created.
 	article.Id = id.String()
 
 	err = s.storage.Create(ctx, article)
@@ -117,7 +131,9 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 		Timestamp: time.Now(),
 	}
 
-	s.eventHandler.ResilientPublish(ctx, event)
+	if err := s.eventHandler.ResilientPublish(ctx, event); err != nil {
+		s.logger.Log(ctx, "Failed to publish event", "err", err)
+	}
 
 	return &pb.CreateArticleResponse{}, nil
 }
@@ -140,7 +156,9 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 		Timestamp: time.Now(),
 	}
 
-	s.eventHandler.ResilientPublish(ctx, event)
+	if err := s.eventHandler.ResilientPublish(ctx, event); err != nil {
+		s.logger.Log(ctx, "Failed to publish event", "err", err)
+	}
 
 	return &pb.DeleteArticleResponse{}, nil
 }
@@ -165,7 +183,9 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 		Timestamp: time.Now(),
 	}
 
-	s.eventHandler.ResilientPublish(ctx, event)
+	if err := s.eventHandler.ResilientPublish(ctx, event); err != nil {
+		s.logger.Log(ctx, "Failed to publish event", "err", err)
+	}
 
 	return &pb.UpdateArticleResponse{}, nil
 }

@@ -72,4 +72,4 @@ data:
     scrape_configs:
       - job_name: aggregated-trace-metrics
         static_configs:
-        - targets: ['otel-collector-service:8889']
+        - targets: ['otel-collector-service:8889', 'article-service:2223']

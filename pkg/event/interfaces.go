@@ -8,6 +8,7 @@ import (
 )
 
 type Handler interface {
+	Run() error
 	Consumer
 	Publisher
 	io.Closer

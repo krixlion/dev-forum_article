@@ -8,11 +8,8 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/server"
-	"github.com/krixlion/dev-forum_article/pkg/tracing"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 
 	"google.golang.org/grpc"
 )
@@ -40,21 +37,20 @@ func NewArticleService(grpcPort int) *ArticleService {
 }
 
 func (service *ArticleService) Run(ctx context.Context) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "Run")
-	defer span.End()
-
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", service.grpcPort))
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		service.logger.Log(ctx, "failed to create a listener", "transport", "grpc", "err", err)
 	}
+
+	go func() {
+		if err := service.srv.Run(ctx); err != nil {
+			service.logger.Log(ctx, "Failed to run server", "err", err)
+		}
+	}()
 
 	service.logger.Log(ctx, "listening", "transport", "grpc", "port", service.grpcPort)
 	err = service.grpcSrv.Serve(lis)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		service.logger.Log(ctx, "failed to serve", "transport", "grpc", "err", err)
 	}
 }
