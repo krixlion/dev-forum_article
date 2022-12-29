@@ -2,20 +2,15 @@ package rabbitmq
 
 import (
 	"context"
-	"encoding/json"
 
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
 )
 
-func (mq *RabbitMQ) Publish(ctx context.Context, e event.Event) error {
+func (mq *RabbitMQ) Publish(ctx context.Context, msg Message) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Publish")
 	defer span.End()
-
-	msg := makeMessageFromEvent(e)
 
 	err := mq.prepareExchange(ctx, msg)
 	if err != nil {
@@ -115,18 +110,13 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 	return nil
 }
 
-func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.EntityName, eType event.EventType) (<-chan event.Event, error) {
-	events := make(chan event.Event)
+func (mq *RabbitMQ) Consume(ctx context.Context, command string, route Route) (<-chan Message, error) {
+	messages := make(chan Message)
 	ch := mq.channel()
 
 	if err := ctx.Err(); err != nil {
-		return events, err
+		return nil, err
 	}
-
-	route := makeRouteFromEvent(event.Event{
-		Entity: entity,
-		Type:   eType,
-	})
 
 	callSucceded, err := mq.breaker.Allow()
 	if err != nil {
@@ -188,7 +178,7 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 		return nil, err
 	}
 
-	messages, err := ch.Consume(
+	deliveries, err := ch.Consume(
 		queue.Name,      // queue
 		mq.ConsumerName, // consumer
 		false,           // auto ack
@@ -213,31 +203,29 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, entity entity.E
 
 		for {
 			select {
-			case message := <-messages:
+			case delivery := <-deliveries:
 				limiter <- struct{}{}
 				go func() {
-					ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Consume")
+					_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Consume")
 					defer span.End()
 					defer func() { <-limiter }()
 
-					event := event.Event{}
-					if message.ContentType == string(ContentTypeJson) {
-						if err := json.Unmarshal(message.Body, &event); err != nil {
-							tracing.SetSpanErr(span, err)
-							mq.logger.Log(ctx, "Failed to process message", "err", err)
-							return
-						}
+					message := Message{
+						Route:       route,
+						Body:        delivery.Body,
+						ContentType: ContentType(delivery.ContentType),
+						Timestamp:   delivery.Timestamp,
 					}
 
-					message.Ack(false)
-					events <- event
+					delivery.Ack(false)
+					messages <- message
 				}()
 			case <-ctx.Done():
-				close(events)
+				close(messages)
 				return
 			}
 		}
 	}()
 
-	return events, nil
+	return messages, nil
 }

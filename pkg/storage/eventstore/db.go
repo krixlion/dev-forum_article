@@ -1,4 +1,4 @@
-package cmd
+package eventstore
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ func formatConnString(port, host, user, pass string) string {
 	return fmt.Sprintf("esdb://%s:%s@%s:%s?tls=false", user, pass, host, port)
 }
 
-func MakeDB(port, host, user, pass string) DB {
+func MakeDB(port, host, user, pass string, logger logging.Logger) DB {
 	url := formatConnString(port, host, user, pass)
 	settings, err := esdb.ParseConnectionString(url)
 	if err != nil {
@@ -26,11 +26,14 @@ func MakeDB(port, host, user, pass string) DB {
 	}
 
 	client, _ := esdb.NewClient(settings)
-	logger, _ := logging.NewLogger()
 
 	return DB{
 		url:    url,
 		client: client,
 		logger: logger,
 	}
+}
+
+func (db DB) Close() error {
+	return db.client.Close()
 }

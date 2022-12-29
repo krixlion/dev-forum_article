@@ -9,13 +9,11 @@ import (
 )
 
 type Storage interface {
-	// CatchUp listens for new events and updates the read model.
-	ListenAndCatchUp(ctx context.Context) error
-	Reader
+	Getter
 	Writer
 }
 
-type Reader interface {
+type Getter interface {
 	io.Closer
 	Get(ctx context.Context, id string) (entity.Article, error)
 	GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error)
@@ -28,16 +26,7 @@ type Writer interface {
 	Delete(ctx context.Context, id string) error
 }
 
-type CatchUper interface {
-	CatchUp(context.Context, event.Event) error
-}
-
 type Eventstore interface {
-	event.Subscriber
+	event.Consumer
 	Writer
-}
-
-type Querer interface {
-	Reader
-	CatchUper
 }

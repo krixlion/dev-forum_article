@@ -1,4 +1,4 @@
-package cmd
+package eventstore
 
 import (
 	"context"
@@ -14,10 +14,6 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-func (db DB) Close() error {
-	return db.client.Close()
-}
-
 func (db DB) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Create")
 	defer span.End()
@@ -29,10 +25,10 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	}
 
 	e := event.Event{
-		Entity:    entity.ArticleEntity,
-		Type:      event.Created,
-		Body:      jsonArticle,
-		Timestamp: time.Now(),
+		AggregateId: "article",
+		Type:        event.ArticleCreated,
+		Body:        jsonArticle,
+		Timestamp:   time.Now(),
 	}
 
 	data, err := json.Marshal(e)
@@ -46,7 +42,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 		EventType:   string(e.Type),
 		Data:        data,
 	}
-	streamID := fmt.Sprintf("%s-%s", entity.ArticleEntity, article.Id)
+	streamID := fmt.Sprintf("%s-%s", "article", article.Id)
 
 	_, err = db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData)
 	if err != nil {
@@ -67,10 +63,10 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	}
 
 	e := event.Event{
-		Entity:    entity.ArticleEntity,
-		Type:      event.Updated,
-		Body:      jsonArticle,
-		Timestamp: time.Now(),
+		AggregateId: "article",
+		Type:        event.ArticleUpdated,
+		Body:        jsonArticle,
+		Timestamp:   time.Now(),
 	}
 
 	data, err := json.Marshal(e)
@@ -93,7 +89,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 		EventType:   string(e.Type),
 		Data:        data,
 	}
-	streamID := fmt.Sprintf("%s-%s", entity.ArticleEntity, article.Id)
+	streamID := fmt.Sprintf("%s-%s", "article", article.Id)
 
 	_, err = db.client.AppendToStream(ctx, streamID, appendOpts, eventData)
 	if err != nil {
@@ -115,10 +111,10 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	}
 
 	e := event.Event{
-		Entity:    entity.ArticleEntity,
-		Type:      event.Deleted,
-		Body:      jsonID,
-		Timestamp: time.Now(),
+		AggregateId: "article",
+		Type:        event.ArticleDeleted,
+		Body:        jsonID,
+		Timestamp:   time.Now(),
 	}
 
 	data, err := json.Marshal(e)
@@ -132,7 +128,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 		EventType:   string(e.Type),
 		Data:        data,
 	}
-	streamID := fmt.Sprintf("%s-%s", entity.ArticleEntity, id)
+	streamID := fmt.Sprintf("%s-%s", "article", id)
 
 	_, err = db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData)
 
@@ -153,7 +149,7 @@ func (db DB) lastRevision(ctx context.Context, articleId string) (*esdb.Resolved
 		From:      esdb.End{},
 	}
 
-	streamID := fmt.Sprintf("%s-%s", entity.ArticleEntity, articleId)
+	streamID := fmt.Sprintf("%s-%s", "article", articleId)
 
 	stream, err := db.client.ReadStream(ctx, streamID, readOpts, 1)
 	if err != nil {

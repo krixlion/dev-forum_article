@@ -3,16 +3,15 @@ package rabbitmq_test
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/env"
-	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
+	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/net/rabbitmq"
+	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -35,30 +34,22 @@ func init() {
 	pass = os.Getenv("MQ_PASS")
 }
 
-func setUpMQ() (*rabbitmq.RabbitMQ, func()) {
+func setUpMQ() *rabbitmq.RabbitMQ {
+	logger, _ := logging.NewLogger()
 	config := rabbitmq.Config{
 		QueueSize:         100,
-		ReconnectInterval: time.Second * 2,
+		ReconnectInterval: time.Millisecond * 100,
 		MaxRequests:       30,
 		ClearInterval:     time.Second * 5,
 		ClosedTimeout:     time.Second * 15,
 	}
-	mq := rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config)
-	tearDown := func() {
-		go func() {
-			err := mq.Run()
-			defer mq.Close()
-			if err != nil {
-				log.Fatalf("MQ shutdown with error: %s", err)
-			}
-		}()
-	}
-	return mq, tearDown
+	mq := rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, logger, config)
+	return mq
 }
 
 func TestPubSub(t *testing.T) {
-	mq, tearDown := setUpMQ()
-	tearDown()
+	mq := setUpMQ()
+	defer mq.Close()
 
 	article := gentest.RandomArticle(3, 5)
 	data, err := json.Marshal(article)
@@ -68,16 +59,20 @@ func TestPubSub(t *testing.T) {
 
 	testCases := []struct {
 		desc    string
-		arg     event.Event
+		arg     rabbitmq.Message
 		wantErr bool
 	}{
 		{
 			desc: "Test if a simple message is correctly published and consumed.",
-			arg: event.Event{
-				Entity:    entity.ArticleEntity,
-				Type:      event.Deleted,
-				Body:      data,
-				Timestamp: time.Now(),
+			arg: rabbitmq.Message{
+				Body:        data,
+				ContentType: rabbitmq.ContentTypeJson,
+				Timestamp:   time.Now(),
+				Route: rabbitmq.Route{
+					ExchangeName: "",
+					ExchangeType: amqp.ExchangeTopic,
+					RoutingKey:   "",
+				},
 			},
 			wantErr: false,
 		},
@@ -92,7 +87,7 @@ func TestPubSub(t *testing.T) {
 				t.Errorf("RabbitMQ.Publish() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
 			}
 
-			events, err := mq.Consume(ctx, "deleteArticle", tC.arg.Entity, tC.arg.Type)
+			events, err := mq.Consume(ctx, "deleteArticle", tC.arg.Route)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("RabbitMQ.Consume() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
 			}
@@ -106,8 +101,8 @@ func TestPubSub(t *testing.T) {
 }
 
 func TestPubSubPipeline(t *testing.T) {
-	mq, tearDown := setUpMQ()
-	tearDown()
+	mq := setUpMQ()
+	defer mq.Close()
 
 	article := gentest.RandomArticle(3, 5)
 	data, err := json.Marshal(article)
@@ -117,16 +112,20 @@ func TestPubSubPipeline(t *testing.T) {
 
 	testCases := []struct {
 		desc    string
-		arg     event.Event
+		arg     rabbitmq.Message
 		wantErr bool
 	}{
 		{
 			desc: "Test if a simple message is correctly published through a pipeline and consumed.",
-			arg: event.Event{
-				Entity:    entity.ArticleEntity,
-				Type:      event.Created,
-				Body:      data,
-				Timestamp: time.Now(),
+			arg: rabbitmq.Message{
+				Body:        data,
+				ContentType: rabbitmq.ContentTypeJson,
+				Timestamp:   time.Now(),
+				Route: rabbitmq.Route{
+					ExchangeName: "",
+					ExchangeType: amqp.ExchangeTopic,
+					RoutingKey:   "",
+				},
 			},
 			wantErr: false,
 		},
@@ -137,14 +136,14 @@ func TestPubSubPipeline(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			err := mq.ResilientPublish(ctx, tC.arg)
+			err := mq.Enqueue(tC.arg)
 			if (err != nil) != tC.wantErr {
-				t.Errorf("RabbitMQ.ResilientPublish() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("RabbitMQ.Enqueue() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
 			}
 
-			events, err := mq.Consume(ctx, "createArticle", tC.arg.Entity, tC.arg.Type)
+			events, err := mq.Consume(ctx, "createArticle", tC.arg.Route)
 			if (err != nil) != tC.wantErr {
-				t.Errorf("RabbitMQ.ResilientPublish() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("RabbitMQ.Consume() error = %+v\n, wantErr = %+v\n", err, tC.wantErr)
 			}
 
 			event := <-events

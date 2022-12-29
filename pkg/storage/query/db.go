@@ -5,13 +5,15 @@ import (
 
 	"github.com/go-redis/redis/extra/redisotel/v9"
 	"github.com/go-redis/redis/v9"
+	"github.com/krixlion/dev-forum_article/pkg/logging"
 )
 
 type DB struct {
-	redis *redis.Client
+	redis  *redis.Client
+	logger logging.Logger
 }
 
-func MakeDB(host, port, pass string) (DB, error) {
+func MakeDB(host, port, pass string, logger logging.Logger) (DB, error) {
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     host + ":" + port,
@@ -28,8 +30,10 @@ func MakeDB(host, port, pass string) (DB, error) {
 	if err != nil {
 		return DB{}, err
 	}
+
 	return DB{
-		redis: rdb,
+		redis:  rdb,
+		logger: logger,
 	}, nil
 }
 

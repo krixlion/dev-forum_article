@@ -2,15 +2,18 @@ package query_test
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/go-redis/redis/v9"
 	"github.com/google/go-cmp/cmp"
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/env"
 	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
+	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
 )
 
@@ -28,7 +31,8 @@ func init() {
 }
 
 func setUpDB() query.DB {
-	db, err := query.MakeDB(host, port, pass)
+	logger, _ := logging.NewLogger()
+	db, err := query.MakeDB(host, port, pass, logger)
 	if err != nil {
 		log.Fatalf("Failed to make DB, err: %s", err)
 	}
@@ -87,12 +91,8 @@ func TestCRUD(t *testing.T) {
 				t.Errorf("db.Delete() err = %v", err)
 			}
 
-			v, err := db.Get(ctx, article.Id)
-			if err != nil {
+			if _, err := db.Get(ctx, article.Id); err != nil && !errors.Is(err, redis.Nil) {
 				t.Fatalf("Failed to db.Get() after db.Del(), err = %v", err)
-			}
-			if !cmp.Equal(v, entity.Article{}) {
-				t.Errorf("Failed to delete article after testing, got = %v, want = %v", v, entity.Article{})
 			}
 		})
 	}

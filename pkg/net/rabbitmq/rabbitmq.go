@@ -12,7 +12,6 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sony/gobreaker"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -35,8 +34,9 @@ type RabbitMQ struct {
 	logger          logging.Logger
 }
 
-// NewRabbitMQ returns a new connection struct.
-// Run() method needs to be invoked before any operations on this struct are performed.
+// NewRabbitMQ returns a new initialized connection struct.
+// It will manage the active connection in the background.
+// Connection should be closed in order to shut it down gracefully.
 //
 //	func example() {
 //		user := "guest"
@@ -45,7 +45,7 @@ type RabbitMQ struct {
 //		port := "5672"
 //		consumer := "user-service" //  Unique name for each consumer used to sign messages.
 //
-//		// You can use rabbitmq.DefaultConfig() instead.
+//		// You can specify your own config or use rabbitmq.DefaultConfig() instead.
 //		config := Config{
 //			QueueSize:         100,             // Max number of messages internally queued for publishing.
 //			MaxWorkers:        100,           	// Max number of concurrent workers.
@@ -56,20 +56,16 @@ type RabbitMQ struct {
 //		}
 //
 //		rabbit := rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config)
-//		rabbit.Run()
 //		defer rabbit.Close()
 //	}
-func NewRabbitMQ(consumer, user, pass, host, port string, config Config) *RabbitMQ {
-
+func NewRabbitMQ(consumer, user, pass, host, port string, logger logging.Logger, config Config) *RabbitMQ {
 	url := fmt.Sprintf("amqp://%s:%s@%s:%s/", user, pass, host, port)
-
 	ctx, cancel := context.WithCancel(context.Background())
-	logger, _ := logging.NewLogger()
 
-	return &RabbitMQ{
+	mq := &RabbitMQ{
 		publishQueue:    make(chan Message, config.QueueSize),
 		readChannel:     make(chan chan *amqp.Channel),
-		notifyConnClose: make(chan *amqp.Error, 4),
+		notifyConnClose: make(chan *amqp.Error, 16),
 		ctx:             ctx,
 		shutdown:        cancel,
 		logger:          logger,
@@ -83,35 +79,23 @@ func NewRabbitMQ(consumer, user, pass, host, port string, config Config) *Rabbit
 			Timeout:     config.ClosedTimeout,
 		}),
 	}
+	mq.run()
+	return mq
 }
 
-// Run initializes the RabbitMQ connection and starts the system in
+// run initializes the RabbitMQ connection and manages it in
 // seperate goroutines while blocking the goroutine it was called from.
-//
-// Do not forget to Close() in order to shutdown the system.
-func (mq *RabbitMQ) Run() error {
-	if err := mq.dial(); err != nil {
-		return err
-	}
-
-	errg, ctx := errgroup.WithContext(context.Background())
-
-	mq.runPublishQueue(ctx)
-
-	errg.Go(func() error {
-		return mq.handleConnectionErrors(ctx)
-	})
-
-	errg.Go(func() error {
-		return mq.handleChannelReads(ctx)
-	})
-
-	return errg.Wait()
+// You should use Close() in order to shutdown the connection.
+func (mq *RabbitMQ) run() {
+	mq.ReDial(mq.ctx)
+	go mq.runPublishQueue(mq.ctx)
+	go mq.handleConnectionErrors(mq.ctx)
+	go mq.handleChannelReads(mq.ctx)
 }
 
-// Close active connection gracefully.
+// Close closes active connection gracefully.
 func (mq *RabbitMQ) Close() error {
-	defer mq.shutdown()
+	mq.shutdown()
 	if mq.connection != nil && !mq.connection.IsClosed() {
 		mq.logger.Log(mq.ctx, "Closing active connections")
 		if err := mq.connection.Close(); err != nil {
@@ -128,7 +112,7 @@ func (mq *RabbitMQ) runPublishQueue(ctx context.Context) {
 }
 
 // handleChannelReads is meant to be run in a seperate goroutine.
-func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
+func (mq *RabbitMQ) handleChannelReads(ctx context.Context) {
 	limiter := make(chan struct{}, mq.config.MaxWorkers)
 	for {
 		select {
@@ -162,37 +146,39 @@ func (mq *RabbitMQ) handleChannelReads(ctx context.Context) error {
 				req <- channel
 			}()
 		case <-ctx.Done():
-			mq.logger.Log(ctx, "Stopped listening to channel reads")
-			return ctx.Err()
+			return
 		}
 	}
 }
 
 // handleConnectionErrors is meant to be run in a seperate goroutine.
-func (mq *RabbitMQ) handleConnectionErrors(ctx context.Context) error {
+func (mq *RabbitMQ) handleConnectionErrors(ctx context.Context) {
 	for {
 		select {
 		case e := <-mq.notifyConnClose:
 			if e == nil {
 				continue
 			}
-
-			for {
-				mq.logger.Log(ctx, "Reconnecting to RabbitMQ")
-
-				err := mq.dial()
-				if err == nil {
-					break
-				}
-
-				mq.logger.Log(ctx, "Failed to connect to RabbitMQ", "err", err)
-
-				time.Sleep(mq.config.ReconnectInterval)
-			}
+			mq.ReDial(ctx)
 
 		case <-ctx.Done():
-			return ctx.Err()
+			return
 		}
+	}
+}
+
+func (mq *RabbitMQ) ReDial(ctx context.Context) {
+	for {
+		mq.logger.Log(ctx, "Reconnecting to RabbitMQ")
+
+		err := mq.dial()
+		if err == nil {
+			return
+		}
+
+		mq.logger.Log(ctx, "Failed to connect to RabbitMQ", "err", err)
+
+		time.Sleep(mq.config.ReconnectInterval)
 	}
 }
 

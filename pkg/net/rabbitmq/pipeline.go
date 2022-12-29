@@ -4,23 +4,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
 )
 
-// ResilientPublish returns an error only if the queue is full or if it failed to serialize the event.
-func (mq *RabbitMQ) ResilientPublish(ctx context.Context, e event.Event) error {
-	msg := makeMessageFromEvent(e)
-	if err := mq.enqueue(msg); err != nil {
-		return err
-	}
-	return nil
-}
-
 // enqueue appends a message to the publishQueue and return a non-nil error if the queue is full.
-func (mq *RabbitMQ) enqueue(msg Message) error {
+func (mq *RabbitMQ) Enqueue(msg Message) error {
 	select {
 	case mq.publishQueue <- msg:
 		return nil
@@ -30,7 +20,7 @@ func (mq *RabbitMQ) enqueue(msg Message) error {
 }
 
 func (mq *RabbitMQ) tryToEnqueue(ctx context.Context, message Message, err error, logErrorMessage string) {
-	if err := mq.enqueue(message); err != nil {
+	if err := mq.Enqueue(message); err != nil {
 		mq.logger.Log(ctx, "Failed to enqueue message", "err", err)
 	}
 

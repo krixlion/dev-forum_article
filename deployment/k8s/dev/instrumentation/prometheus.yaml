@@ -23,6 +23,7 @@ spec:
           name: prometheus
           ports:
             - containerPort: 9090
+            - containerPort: 31923
           resources:
             limits:
               cpu: 200m

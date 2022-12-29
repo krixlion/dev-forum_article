@@ -255,7 +255,6 @@ services:
     image: grafana/grafana:9.3.2
     container_name:  grafana
     volumes:
-      - ./config/otel/grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./config/otel/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true

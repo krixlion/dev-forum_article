@@ -4,23 +4,23 @@ import (
 	"context"
 
 	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/event"
 	"github.com/krixlion/dev-forum_article/pkg/logging"
 )
 
 // DB is a wrapper for the read model and write model to use with Storage interface.
 type DB struct {
 	cmd    Eventstore
-	query  Querer
+	query  Getter
 	logger logging.Logger
 }
 
-func NewStorage(cmd Eventstore, query Querer, logger logging.Logger) Storage {
-	return &DB{
+func NewStorage(cmd Eventstore, query Getter, logger logging.Logger) Storage {
+	db := &DB{
 		cmd:    cmd,
 		query:  query,
 		logger: logger,
 	}
+	return db
 }
 
 func (storage DB) Close() error {
@@ -47,13 +47,4 @@ func (storage DB) Create(ctx context.Context, article entity.Article) error {
 
 func (storage DB) Delete(ctx context.Context, id string) error {
 	return storage.cmd.Delete(ctx, id)
-}
-
-func (db DB) ListenAndCatchUp(ctx context.Context) error {
-	types := []event.EventType{
-		event.Created,
-		event.Deleted,
-		event.Updated,
-	}
-	return db.cmd.Subscribe(ctx, event.HandlerFunc(db.query.CatchUp), entity.ArticleEntity, types...)
 }

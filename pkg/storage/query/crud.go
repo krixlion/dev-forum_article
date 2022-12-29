@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/go-redis/redis/v9"
 	"github.com/krixlion/dev-forum_article/pkg/entity"
@@ -187,12 +188,13 @@ func addArticlesPrefix(key string) string {
 
 func mapArticle(article entity.Article) map[string]string {
 	v := reflect.ValueOf(article)
-	values := map[string]string{}
+	values := make(map[string]string)
 
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		if s := field.String(); s != "" {
-			values[field.Type().Name()] = s
+			fieldName := strings.ToLower(v.Type().Field(i).Name)
+			values[fieldName] = s
 		}
 	}
 	return values

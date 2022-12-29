@@ -11,14 +11,14 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/event"
+	"github.com/krixlion/dev-forum_article/pkg/event/broker"
 	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
 	"github.com/krixlion/dev-forum_article/pkg/net/rabbitmq"
 	"github.com/krixlion/dev-forum_article/pkg/storage"
-	"github.com/krixlion/dev-forum_article/pkg/storage/cmd"
+	"github.com/krixlion/dev-forum_article/pkg/storage/eventstore"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
-	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -26,9 +26,9 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	storage      storage.Storage
-	eventHandler event.Handler
-	logger       logging.Logger
+	storage    storage.Storage
+	dispatcher event.Dispatcher
+	logger     logging.Logger
 }
 
 // MakeArticleServer reads connection data from the environment
@@ -60,36 +60,27 @@ func MakeArticleServer() ArticleServer {
 	}
 
 	logger, _ := logging.NewLogger()
-	cmd := cmd.MakeDB(cmd_port, cmd_host, cmd_user, cmd_pass)
-	query, err := query.MakeDB(query_host, query_port, query_pass)
-
+	mq := rabbitmq.NewRabbitMQ(consumer, mq_user, mq_pass, mq_host, mq_port, logger, config)
+	broker := broker.NewBroker(mq, logger)
+	dispatcher := event.NewDispatcher(broker)
+	cmd := eventstore.MakeDB(cmd_port, cmd_host, cmd_user, cmd_pass, logger)
+	query, err := query.MakeDB(query_host, query_port, query_pass, logger)
 	if err != nil {
 		panic(err)
 	}
 
+	dispatcher.Subscribe(event.HandlerFunc(query.CatchUp), event.ArticleCreated, event.ArticleDeleted, event.ArticleUpdated)
+
 	return ArticleServer{
-		storage:      storage.NewStorage(cmd, query, logger),
-		logger:       logger,
-		eventHandler: rabbitmq.NewRabbitMQ(consumer, mq_user, mq_pass, mq_host, mq_port, config),
+		storage:    storage.NewStorage(cmd, query, logger),
+		dispatcher: dispatcher,
+		logger:     logger,
 	}
-}
-
-func (s ArticleServer) Run(ctx context.Context) error {
-	errg, ctx := errgroup.WithContext(ctx)
-	errg.Go(func() error {
-		return s.eventHandler.Run()
-	})
-
-	errg.Go(func() error {
-		return s.storage.ListenAndCatchUp(ctx)
-	})
-
-	return errg.Wait()
 }
 
 func (s ArticleServer) Close() error {
 	var errMsg string
-	err := s.eventHandler.Close()
+	err := s.dispatcher.Close()
 	if err != nil {
 		errMsg = fmt.Sprintf("failed to close eventHandler: %s", err)
 	}
@@ -115,25 +106,24 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	// Assign new UUID to article about to be created.
 	article.Id = id.String()
 
-	err = s.storage.Create(ctx, article)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
-	}
-
 	json, err := json.Marshal(article)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	event := event.Event{
-		Entity:    entity.ArticleEntity,
-		Type:      event.Created,
-		Body:      json,
-		Timestamp: time.Now(),
+		AggregateId: "article",
+		Type:        event.ArticleCreated,
+		Body:        json,
+		Timestamp:   time.Now(),
 	}
 
-	if err := s.eventHandler.ResilientPublish(ctx, event); err != nil {
-		s.logger.Log(ctx, "Failed to publish event", "err", err)
+	if err := s.dispatcher.Dispatch(event); err != nil {
+		s.logger.Log(ctx, "Failed to dispatch event", "err", err)
+	}
+
+	if err = s.storage.Create(ctx, article); err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	return &pb.CreateArticleResponse{
@@ -142,25 +132,28 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 }
 
 func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (*pb.DeleteArticleResponse, error) {
-	err := s.storage.Delete(ctx, req.GetId())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
-	}
-
 	json, err := json.Marshal(req.GetId())
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	event := event.Event{
-		Entity:    entity.ArticleEntity,
-		Type:      event.Deleted,
-		Body:      json,
-		Timestamp: time.Now(),
+		AggregateId: "article",
+		Type:        event.ArticleDeleted,
+		Body:        json,
+		Timestamp:   time.Now(),
 	}
 
-	if err := s.eventHandler.ResilientPublish(ctx, event); err != nil {
-		s.logger.Log(ctx, "Failed to publish event", "err", err)
+	if err := s.dispatcher.Dispatch(event); err != nil {
+		s.logger.Log(ctx, "Failed to dispatch event", "err", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	if err := s.storage.Delete(ctx, req.GetId()); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	return &pb.DeleteArticleResponse{}, nil
@@ -168,34 +161,38 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 
 func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (*pb.UpdateArticleResponse, error) {
 	article := entity.ArticleFromPb(req.GetArticle())
-
-	err := s.storage.Update(ctx, article)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
-	}
-
 	json, err := json.Marshal(article)
 	if err != nil {
 		return nil, err
 	}
 
 	event := event.Event{
-		Entity:    entity.ArticleEntity,
-		Type:      event.Updated,
-		Body:      json,
-		Timestamp: time.Now(),
+		AggregateId: "article",
+		Type:        event.ArticleUpdated,
+		Body:        json,
+		Timestamp:   time.Now(),
 	}
 
-	if err := s.eventHandler.ResilientPublish(ctx, event); err != nil {
-		s.logger.Log(ctx, "Failed to publish event", "err", err)
+	if err := s.dispatcher.Dispatch(event); err != nil {
+		s.logger.Log(ctx, "Failed to dispatch event", "err", err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	if err := s.storage.Update(ctx, article); err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	return &pb.UpdateArticleResponse{}, nil
 }
 
 func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.GetArticleResponse, error) {
-	article, err := s.storage.Get(ctx, req.GetArticleId())
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
 
+	article, err := s.storage.Get(ctx, req.GetArticleId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get article: %v", err)
 	}
@@ -211,7 +208,9 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 }
 
 func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleService_GetStreamServer) error {
-	ctx := stream.Context()
+	ctx, cancel := context.WithTimeout(stream.Context(), time.Second*10)
+	defer cancel()
+
 	articles, err := s.storage.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
 	if err != nil {
 		return err

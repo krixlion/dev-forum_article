@@ -42,11 +42,11 @@ func (service *ArticleService) Run(ctx context.Context) {
 		service.logger.Log(ctx, "failed to create a listener", "transport", "grpc", "err", err)
 	}
 
-	go func() {
-		if err := service.srv.Run(ctx); err != nil {
-			service.logger.Log(ctx, "Failed to run server", "err", err)
-		}
-	}()
+	// go func() {
+	// 	if err := service.srv.Run(ctx); err != nil {
+	// 		service.logger.Log(ctx, "Failed to run server", "err", err)
+	// 	}
+	// }()
 
 	service.logger.Log(ctx, "listening", "transport", "grpc", "port", service.grpcPort)
 	err = service.grpcSrv.Serve(lis)

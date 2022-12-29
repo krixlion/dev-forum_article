@@ -33,7 +33,7 @@ type log struct {
 
 // NewLogger returns an error on hardware error.
 func NewLogger() (Logger, error) {
-	logger, err := zap.NewProduction(zap.AddCaller(), zap.AddCallerSkip(1))
+	logger, err := zap.NewProduction(zap.AddCaller(), zap.AddCallerSkip(2))
 	otelLogger := otelzap.New(logger)
 	sugar := otelLogger.Sugar()
 	defer sugar.Sync()

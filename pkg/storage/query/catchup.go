@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/event"
@@ -10,64 +11,73 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-func (db DB) CatchUp(ctx context.Context, e event.Event) (err error) {
+// CatchUp handles events required to keep the read model consistent.
+func (db DB) CatchUp(e event.Event) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.CatchUp")
 	defer span.End()
 
-	if e.Entity != entity.ArticleEntity {
-		return nil
-	}
-
-	if err = ctx.Err(); err != nil {
-		tracing.SetSpanErr(span, err)
-		return
-	}
-
 	switch e.Type {
-	case event.Created:
+	case event.ArticleCreated:
 		var article entity.Article
-		err = json.Unmarshal(e.Body, &article)
-		if err != nil {
+		if err := json.Unmarshal(e.Body, &article); err != nil {
 			tracing.SetSpanErr(span, err)
+			db.logger.Log(ctx, "Failed to parse event",
+				"err", err,
+				"event", e,
+			)
 			return
 		}
 
-		err = db.Create(ctx, article)
-		if err != nil {
+		if err := db.Create(ctx, article); err != nil {
 			tracing.SetSpanErr(span, err)
-			return
+			db.logger.Log(ctx, "Failed to create article",
+				"err", err,
+				"event", e,
+			)
 		}
 		return
 
-	case event.Deleted:
+	case event.ArticleDeleted:
 		var id string
-		err = json.Unmarshal(e.Body, &id)
-		if err != nil {
+		if err := json.Unmarshal(e.Body, &id); err != nil {
 			tracing.SetSpanErr(span, err)
-			return
+			db.logger.Log(ctx, "Failed to parse event",
+				"err", err,
+				"event", e,
+			)
 		}
 
-		err = db.Delete(ctx, id)
-		if err != nil {
+		if err := db.Delete(ctx, id); err != nil {
 			tracing.SetSpanErr(span, err)
-			return
+			db.logger.Log(ctx, "Failed to delete article",
+				"err", err,
+				"event", e,
+			)
 		}
 		return
 
-	case event.Updated:
+	case event.ArticleUpdated:
 		var article entity.Article
-		err = json.Unmarshal(e.Body, &article)
-		if err != nil {
+		if err := json.Unmarshal(e.Body, &article); err != nil {
 			tracing.SetSpanErr(span, err)
+			db.logger.Log(ctx, "Failed to parse event",
+				"err", err,
+				"event", e,
+			)
 			return
 		}
 
-		err = db.Update(ctx, article)
-		if err != nil {
+		if err := db.Update(ctx, article); err != nil {
 			tracing.SetSpanErr(span, err)
+
+			db.logger.Log(ctx, "Failed to update article",
+				"err", err,
+				"event", e,
+			)
 		}
 		return
 	}
-
-	return nil
 }
