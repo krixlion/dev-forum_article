@@ -55,6 +55,10 @@ spec:
       restartPolicy: Always
       containers:
         - env:
+            - name: TESTING
+              value: "false"
+            - name: TEST_PATH
+              value: pkg/net/rabbitmq/pubsub_test.go
             - name: BUILD_ARGS
               value: -race cmd/main.go
             - name: DEBUG_PORT

@@ -1,6 +1,6 @@
 package entity
 
-import "github.com/krixlion/dev-forum_article/pkg/net/grpc/pb"
+import "github.com/Krixlion/def-forum_proto/article_service/pb"
 
 // This service's entity.
 type Article struct {

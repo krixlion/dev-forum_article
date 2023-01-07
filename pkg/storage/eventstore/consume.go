@@ -18,7 +18,7 @@ func (db DB) Consume(ctx context.Context, _ string, eType event.EventType) (<-ch
 		From:           esdb.Start{},
 		ResolveLinkTos: true,
 		Filter: &esdb.SubscriptionFilter{
-			Type:  esdb.StreamFilterType,
+			Type:  esdb.EventFilterType,
 			Regex: string(eType),
 		},
 	}
@@ -47,7 +47,6 @@ func (db DB) Consume(ctx context.Context, _ string, eType event.EventType) (<-ch
 				}
 
 				ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Consume")
-				span.End()
 
 				originalEvent := subEvent.EventAppeared.OriginalEvent()
 				options.From = originalEvent.Position
@@ -70,6 +69,7 @@ func (db DB) Consume(ctx context.Context, _ string, eType event.EventType) (<-ch
 					span.End()
 					continue
 				}
+				events <- event
 				span.End()
 			}
 		}

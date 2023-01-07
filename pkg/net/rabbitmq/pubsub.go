@@ -3,24 +3,22 @@ package rabbitmq
 import (
 	"context"
 
-	"github.com/krixlion/dev-forum_article/pkg/tracing"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"go.opentelemetry.io/otel"
 )
 
 func (mq *RabbitMQ) Publish(ctx context.Context, msg Message) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Publish")
+	ctx, span := mq.tracer.Start(ctx, "rabbitmq.Publish")
 	defer span.End()
 
 	err := mq.prepareExchange(ctx, msg)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
+		setSpanErr(span, err)
 		return err
 	}
 
 	err = mq.publish(ctx, msg)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
+		setSpanErr(span, err)
 		return err
 	}
 
@@ -29,10 +27,10 @@ func (mq *RabbitMQ) Publish(ctx context.Context, msg Message) error {
 
 // prepareExchange validates a message and declares a RabbitMQ exchange derived from the message.
 func (mq *RabbitMQ) prepareExchange(ctx context.Context, msg Message) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.prepareExchange")
+	ctx, span := mq.tracer.Start(ctx, "rabbitmq.prepareExchange")
 	defer span.End()
 
-	ch := mq.channel()
+	ch := mq.askForChannel()
 	defer ch.Close()
 
 	if err := ctx.Err(); err != nil {
@@ -41,7 +39,7 @@ func (mq *RabbitMQ) prepareExchange(ctx context.Context, msg Message) error {
 
 	succeded, err := mq.breaker.Allow()
 	if err != nil {
-		tracing.SetSpanErr(span, err)
+		setSpanErr(span, err)
 		return err
 	}
 
@@ -55,7 +53,7 @@ func (mq *RabbitMQ) prepareExchange(ctx context.Context, msg Message) error {
 		nil,              // arguments
 	)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
+		setSpanErr(span, err)
 
 		if isConnectionError(err.(*amqp.Error)) {
 			succeded(false)
@@ -70,10 +68,10 @@ func (mq *RabbitMQ) prepareExchange(ctx context.Context, msg Message) error {
 }
 
 func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.publish")
+	ctx, span := mq.tracer.Start(ctx, "rabbitmq.publish")
 	defer span.End()
 
-	ch := mq.channel()
+	ch := mq.askForChannel()
 	defer ch.Close()
 
 	if err := ctx.Err(); err != nil {
@@ -82,7 +80,7 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 
 	succeded, err := mq.breaker.Allow()
 	if err != nil {
-		tracing.SetSpanErr(span, err)
+		setSpanErr(span, err)
 		return err
 	}
 
@@ -94,6 +92,7 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 		amqp.Publishing{
 			ContentType: string(msg.ContentType),
 			Body:        msg.Body,
+			Timestamp:   msg.Timestamp,
 		},
 	)
 	if err != nil {
@@ -103,7 +102,7 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 		// Error did not render broker unavailable.
 		succeded(true)
 
-		tracing.SetSpanErr(span, err)
+		setSpanErr(span, err)
 		return err
 	}
 	succeded(true)
@@ -112,7 +111,7 @@ func (mq *RabbitMQ) publish(ctx context.Context, msg Message) error {
 
 func (mq *RabbitMQ) Consume(ctx context.Context, command string, route Route) (<-chan Message, error) {
 	messages := make(chan Message)
-	ch := mq.channel()
+	ch := mq.askForChannel()
 
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -180,7 +179,7 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, route Route) (<
 
 	deliveries, err := ch.Consume(
 		queue.Name,      // queue
-		mq.ConsumerName, // consumer
+		mq.consumerName, // consumer
 		false,           // auto ack
 		false,           // exclusive
 		false,           // no local
@@ -206,7 +205,7 @@ func (mq *RabbitMQ) Consume(ctx context.Context, command string, route Route) (<
 			case delivery := <-deliveries:
 				limiter <- struct{}{}
 				go func() {
-					_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.Consume")
+					_, span := mq.tracer.Start(ctx, "rabbitmq.Consume")
 					defer span.End()
 					defer func() { <-limiter }()
 

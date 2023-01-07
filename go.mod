@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/EventStore/EventStore-Client-Go/v3 v3.0.0
+	github.com/Krixlion/def-forum_proto v0.0.0-20230107162033-672237887f03
 	github.com/go-redis/redis/extra/redisotel/v9 v9.0.0-rc.2
 	github.com/go-redis/redis/v9 v9.0.0-rc.2
 	github.com/gofrs/uuid v4.3.1+incompatible
@@ -25,7 +26,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.11.2
 	go.uber.org/zap v1.24.0
 	google.golang.org/grpc v1.51.0
-	google.golang.org/protobuf v1.28.1
 )
 
 require (
@@ -54,4 +54,5 @@ require (
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/text v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 )

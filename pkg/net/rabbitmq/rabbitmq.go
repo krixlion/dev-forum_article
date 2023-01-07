@@ -6,9 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/krixlion/dev-forum_article/pkg/logging"
-	"github.com/krixlion/dev-forum_article/pkg/tracing"
-	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sony/gobreaker"
@@ -20,18 +18,22 @@ const (
 )
 
 type RabbitMQ struct {
-	ConsumerName    string
-	ctx             context.Context
-	shutdown        context.CancelFunc
-	config          Config
-	connection      *amqp.Connection
-	mutex           sync.RWMutex            // Mutex protecting connection during reconnecting.
-	url             string                  // Connection string to RabbitMQ broker.
+	consumerName string
+	ctx          context.Context
+	shutdown     context.CancelFunc
+	config       Config
+	url          string // Connection string to RabbitMQ broker.
+
+	connection *amqp.Connection
+	connMutex  sync.Mutex // Mutex protecting connection during reconnecting.
+
 	notifyConnClose chan *amqp.Error        // Channel to watch for errors from the broker in order to renew the connection.
 	publishQueue    chan Message            // Queue for messages waiting to be republished.
 	readChannel     chan chan *amqp.Channel // Access channel for accessing the RabbitMQ Channel in a thread-safe way.
-	breaker         *gobreaker.TwoStepCircuitBreaker
-	logger          logging.Logger
+
+	tracer  trace.Tracer
+	breaker *gobreaker.TwoStepCircuitBreaker
+	logger  Logger
 }
 
 // NewRabbitMQ returns a new initialized connection struct.
@@ -47,31 +49,38 @@ type RabbitMQ struct {
 //
 //		// You can specify your own config or use rabbitmq.DefaultConfig() instead.
 //		config := Config{
-//			QueueSize:         100,             // Max number of messages internally queued for publishing.
-//			MaxWorkers:        100,           	// Max number of concurrent workers.
-//			ReconnectInterval: time.Second * 2, // Time between reconnect attempts.
-//			MaxRequests:       5,               // Number of requests allowed to half-open state.
-//			ClearInterval:     time.Second * 5, // Time after which failed calls count is cleared.
-//			ClosedTimeout:     time.Second * 5, // Time after which closed state becomes half-open.
+//			QueueSize:         100,
+//			MaxWorkers:        50,
+//			ReconnectInterval: time.Second * 2,
+//			MaxRequests:       5,
+//			ClearInterval:     time.Second * 5,
+//			ClosedTimeout:     time.Second * 5,
 //		}
 //
-//		rabbit := rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config)
+//		// Logger and tracer are optional - pass nil if you don't want Rabbit to log or trace.
+//		rabbit := rabbitmq.NewRabbitMQ(consumer, user, pass, host, port, config, nil, nil)
 //		defer rabbit.Close()
 //	}
-func NewRabbitMQ(consumer, user, pass, host, port string, logger logging.Logger, config Config) *RabbitMQ {
+func NewRabbitMQ(consumer, user, pass, host, port string, config Config, logger Logger, tracer trace.Tracer) *RabbitMQ {
 	url := fmt.Sprintf("amqp://%s:%s@%s:%s/", user, pass, host, port)
 	ctx, cancel := context.WithCancel(context.Background())
 
+	config.MaxWorkers++
+
 	mq := &RabbitMQ{
+		consumerName: consumer,
+		ctx:          ctx,
+		shutdown:     cancel,
+
 		publishQueue:    make(chan Message, config.QueueSize),
 		readChannel:     make(chan chan *amqp.Channel),
 		notifyConnClose: make(chan *amqp.Error, 16),
-		ctx:             ctx,
-		shutdown:        cancel,
-		logger:          logger,
-		url:             url,
-		ConsumerName:    consumer,
-		config:          config,
+
+		connMutex: sync.Mutex{},
+		url:       url,
+		logger:    nullLogger{},
+		tracer:    nullTracer{},
+		config:    config,
 		breaker: gobreaker.NewTwoStepCircuitBreaker(gobreaker.Settings{
 			Name:        consumer,
 			MaxRequests: config.MaxRequests,
@@ -79,6 +88,15 @@ func NewRabbitMQ(consumer, user, pass, host, port string, logger logging.Logger,
 			Timeout:     config.ClosedTimeout,
 		}),
 	}
+
+	if logger != nil {
+		mq.logger = logger
+	}
+
+	if tracer != nil {
+		mq.tracer = tracer
+	}
+
 	mq.run()
 	return mq
 }
@@ -119,14 +137,14 @@ func (mq *RabbitMQ) handleChannelReads(ctx context.Context) {
 		case req := <-mq.readChannel:
 			limiter <- struct{}{}
 			go func() {
-				ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.handleChannelRead")
+				ctx, span := mq.tracer.Start(ctx, "rabbitmq.handleChannelRead")
 				defer span.End()
 				defer func() { <-limiter }()
 				succedeed, err := mq.breaker.Allow()
 				if err != nil {
 					req <- nil
 
-					tracing.SetSpanErr(span, err)
+					setSpanErr(span, err)
 					return
 				}
 
@@ -138,7 +156,7 @@ func (mq *RabbitMQ) handleChannelReads(ctx context.Context) {
 
 					succedeed(false)
 
-					tracing.SetSpanErr(span, err)
+					setSpanErr(span, err)
 					return
 				}
 
@@ -168,8 +186,11 @@ func (mq *RabbitMQ) handleConnectionErrors(ctx context.Context) {
 }
 
 func (mq *RabbitMQ) ReDial(ctx context.Context) {
+	mq.logger.Log(ctx, "Connecting to RabbitMQ")
 	for {
-		mq.logger.Log(ctx, "Reconnecting to RabbitMQ")
+		if err := ctx.Err(); err != nil {
+			return
+		}
 
 		err := mq.dial()
 		if err == nil {
@@ -179,6 +200,8 @@ func (mq *RabbitMQ) ReDial(ctx context.Context) {
 		mq.logger.Log(ctx, "Failed to connect to RabbitMQ", "err", err)
 
 		time.Sleep(mq.config.ReconnectInterval)
+
+		mq.logger.Log(ctx, "Reconnecting to RabbitMQ")
 	}
 }
 
@@ -200,16 +223,16 @@ func (mq *RabbitMQ) dial() error {
 		return err
 	}
 	callSucceded(true)
-
-	mq.mutex.Lock()
-	defer mq.mutex.Unlock()
+	mq.connMutex.Lock()
+	defer mq.connMutex.Unlock()
+	mq.notifyConnClose = conn.NotifyClose(mq.notifyConnClose)
 	mq.connection = conn
 
 	return nil
 }
 
-// channel returns a channel in a thread-safe way.
-func (mq *RabbitMQ) channel() *amqp.Channel {
+// askForChannel returns *amqp.channel in a thread-safe way.
+func (mq *RabbitMQ) askForChannel() *amqp.Channel {
 	for {
 		ask := make(chan *amqp.Channel)
 		mq.readChannel <- ask

@@ -10,28 +10,30 @@ import (
 type DB struct {
 	logger logging.Logger
 	client *esdb.Client
-	// eventHandler event.Handler
-	url string
+	url    string
 }
 
 func formatConnString(port, host, user, pass string) string {
 	return fmt.Sprintf("esdb://%s:%s@%s:%s?tls=false", user, pass, host, port)
 }
 
-func MakeDB(port, host, user, pass string, logger logging.Logger) DB {
+func MakeDB(port, host, user, pass string, logger logging.Logger) (DB, error) {
 	url := formatConnString(port, host, user, pass)
-	settings, err := esdb.ParseConnectionString(url)
+	config, err := esdb.ParseConnectionString(url)
 	if err != nil {
-		panic(err)
+		return DB{}, err
 	}
 
-	client, _ := esdb.NewClient(settings)
+	client, err := esdb.NewClient(config)
+	if err != nil {
+		return DB{}, err
+	}
 
 	return DB{
 		url:    url,
 		client: client,
 		logger: logger,
-	}
+	}, nil
 }
 
 func (db DB) Close() error {

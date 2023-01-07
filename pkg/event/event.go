@@ -15,7 +15,7 @@ type Event struct {
 
 type EventType string
 
-// All event names must be all lowercase and follow the structure: "noun-action".
+// All event names must be lowercase and follow the structure: "noun-action".
 // Eg. article-created, notification-sent, order-accepted.
 // For longer names use snake-case naming.
 // Eg. changed_password_notification-sent.

@@ -6,16 +6,8 @@ import (
 )
 
 type Broker interface {
-	io.Closer
 	Consumer
 	Publisher
-}
-
-type Dispatcher interface {
-	io.Closer
-	Subscriber
-
-	Dispatch(Event) error
 }
 
 type Consumer interface {
@@ -35,7 +27,7 @@ type Publisher interface {
 }
 
 type Subscriber interface {
-	// Subscribe registers an event handler.
+	// Subscribe registers an event handler for sepcified types of events.
 	Subscribe(Handler, ...EventType)
 }
 

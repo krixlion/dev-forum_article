@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/krixlion/dev-forum_article/pkg/tracing"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"go.opentelemetry.io/otel"
 )
 
 // enqueue appends a message to the publishQueue and return a non-nil error if the queue is full.
@@ -29,7 +27,7 @@ func (mq *RabbitMQ) tryToEnqueue(ctx context.Context, message Message, err error
 
 func (mq *RabbitMQ) publishPipelined(ctx context.Context, messages <-chan Message) {
 	go func() {
-		channel := mq.channel()
+		channel := mq.askForChannel()
 		defer channel.Close()
 
 		limiter := make(chan struct{}, mq.config.MaxWorkers)
@@ -39,13 +37,13 @@ func (mq *RabbitMQ) publishPipelined(ctx context.Context, messages <-chan Messag
 			case message := <-messages:
 				limiter <- struct{}{}
 				go func() {
-					ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.publishPipelined")
+					ctx, span := mq.tracer.Start(ctx, "rabbitmq.publishPipelined")
 					defer span.End()
 					defer func() { <-limiter }()
 
 					callSucceded, err := mq.breaker.Allow()
 					if err != nil {
-						tracing.SetSpanErr(span, err)
+						setSpanErr(span, err)
 						mq.tryToEnqueue(ctx, message, err, "Failed to publish msg")
 						return
 					}
@@ -58,10 +56,11 @@ func (mq *RabbitMQ) publishPipelined(ctx context.Context, messages <-chan Messag
 						amqp.Publishing{
 							ContentType: string(message.ContentType),
 							Body:        message.Body,
+							Timestamp:   message.Timestamp,
 						},
 					)
 					if err != nil {
-						tracing.SetSpanErr(span, err)
+						setSpanErr(span, err)
 
 						if isConnectionError(err.(*amqp.Error)) {
 							callSucceded(false)
@@ -87,7 +86,7 @@ func (mq *RabbitMQ) prepareExchangePipelined(ctx context.Context, msgs <-chan Me
 	preparedMessages := make(chan Message)
 
 	go func() {
-		channel := mq.channel()
+		channel := mq.askForChannel()
 		defer channel.Close()
 		limiter := make(chan struct{}, mq.config.MaxWorkers)
 
@@ -96,7 +95,7 @@ func (mq *RabbitMQ) prepareExchangePipelined(ctx context.Context, msgs <-chan Me
 			case message := <-msgs:
 				limiter <- struct{}{}
 				go func() {
-					ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "rabbitmq.prepareExchangePipelined")
+					ctx, span := mq.tracer.Start(ctx, "rabbitmq.prepareExchangePipelined")
 					defer span.End()
 					defer func() { <-limiter }()
 
@@ -121,7 +120,7 @@ func (mq *RabbitMQ) prepareExchangePipelined(ctx context.Context, msgs <-chan Me
 						// Error did not render broker unavailable.
 						callSucceded(true)
 
-						tracing.SetSpanErr(span, err)
+						setSpanErr(span, err)
 						mq.tryToEnqueue(ctx, message, err, "Failed to declare exchange")
 						return
 					}

@@ -1,39 +1,65 @@
 package event
 
-type Dispatch struct {
+import (
+	"context"
+	"sync"
+)
+
+type Dispatcher struct {
 	handlers map[EventType][]Handler
-	broker   Publisher
+	events   <-chan Event
 }
 
-func NewDispatcher(broker Publisher) Dispatcher {
-	d := &Dispatch{
+func MakeDispatcher() Dispatcher {
+	return Dispatcher{
 		handlers: make(map[EventType][]Handler),
-		broker:   broker,
 	}
-	return d
 }
 
-func (d *Dispatch) Subscribe(handler Handler, eTypes ...EventType) {
+// AddEventSources registers provided channels as an event source.
+// This method is not thread safe and should be called before Run().
+func (d *Dispatcher) AddEventSources(sources ...<-chan Event) {
+	out := mergeChans(sources...)
+	d.events = out
+}
+
+func (d *Dispatcher) Run(ctx context.Context) {
+	for {
+		select {
+		case event := <-d.events:
+			d.Dispatch(event)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (d *Dispatcher) Subscribe(handler Handler, eTypes ...EventType) {
 	for _, eType := range eTypes {
 		d.handlers[eType] = append(d.handlers[eType], handler)
 	}
 }
 
-func (d Dispatch) Dispatch(e Event) error {
-	err := d.broker.ResilientPublish(e)
-	if err != nil {
-		return err
+func (d Dispatcher) Dispatch(e Event) {
+	for _, handler := range d.handlers[e.Type] {
+		go handler.Handle(e)
 	}
-
-	go func() {
-		for _, handler := range d.handlers[e.Type] {
-			go handler.Handle(e)
-		}
-	}()
-
-	return nil
 }
 
-func (d Dispatch) Close() error {
-	return d.broker.Close()
+func mergeChans(cs ...<-chan Event) <-chan Event {
+	out := make(chan Event)
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(cs))
+
+	for _, c := range cs {
+		go func(c <-chan Event) {
+			for v := range c {
+				out <- v
+			}
+			wg.Done()
+		}(c)
+	}
+
+	return out
 }

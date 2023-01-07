@@ -21,13 +21,11 @@ func MakeDB(host, port, pass string, logger logging.Logger) (DB, error) {
 		DB:       0, // use default DB
 	})
 
-	err := redisotel.InstrumentMetrics(rdb)
-	if err != nil {
+	if err := redisotel.InstrumentMetrics(rdb); err != nil {
 		return DB{}, err
 	}
 
-	err = redisotel.InstrumentTracing(rdb)
-	if err != nil {
+	if err := redisotel.InstrumentTracing(rdb); err != nil {
 		return DB{}, err
 	}
 

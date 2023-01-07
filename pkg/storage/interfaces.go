@@ -10,7 +10,13 @@ import (
 
 type Storage interface {
 	Getter
-	Writer
+	WriteStorage
+	CatchUp(event.Event)
+}
+
+type ReadStorage interface {
+	Getter
+	WriteStorage
 }
 
 type Getter interface {
@@ -19,7 +25,7 @@ type Getter interface {
 	GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error)
 }
 
-type Writer interface {
+type WriteStorage interface {
 	io.Closer
 	Create(context.Context, entity.Article) error
 	Update(context.Context, entity.Article) error
@@ -28,5 +34,5 @@ type Writer interface {
 
 type Eventstore interface {
 	event.Consumer
-	Writer
+	WriteStorage
 }

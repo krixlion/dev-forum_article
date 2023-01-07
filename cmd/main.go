@@ -27,7 +27,6 @@ const projectDir = "app"
 func main() {
 	env.Load(projectDir)
 
-	// Make InitProvider return err instead of calling log.Fatal()
 	shutdownTracing, err := tracing.InitProvider()
 	if err != nil {
 		logging.Log("Failed to initialize tracing", "err", err)
