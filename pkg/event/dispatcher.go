@@ -8,6 +8,7 @@ import (
 type Dispatcher struct {
 	handlers map[EventType][]Handler
 	events   <-chan Event
+	mu       sync.Mutex
 }
 
 func MakeDispatcher() Dispatcher {
@@ -35,12 +36,14 @@ func (d *Dispatcher) Run(ctx context.Context) {
 }
 
 func (d *Dispatcher) Subscribe(handler Handler, eTypes ...EventType) {
+	d.mu.Lock()
 	for _, eType := range eTypes {
 		d.handlers[eType] = append(d.handlers[eType], handler)
 	}
+	d.mu.Unlock()
 }
 
-func (d Dispatcher) Dispatch(e Event) {
+func (d *Dispatcher) Dispatch(e Event) {
 	for _, handler := range d.handlers[e.Type] {
 		go handler.Handle(e)
 	}
