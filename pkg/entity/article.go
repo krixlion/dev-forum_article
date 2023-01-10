@@ -1,6 +1,8 @@
 package entity
 
-import "github.com/Krixlion/def-forum_proto/article_service/pb"
+import (
+	"github.com/Krixlion/def-forum_proto/article_service/pb"
+)
 
 // This service's entity.
 type Article struct {

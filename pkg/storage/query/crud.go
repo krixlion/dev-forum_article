@@ -37,19 +37,25 @@ func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
 	return article, nil
 }
 
-func (db DB) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error) {
+func (db DB) GetMultiple(ctx context.Context, offset, limit string) (articles []entity.Article, err error) {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.GetMultiple")
 	defer span.End()
 
-	off, err := strconv.ParseInt(offset, 10, 0)
-	if err != nil {
-		return nil, err
+	var off int64
+	if offset != "" {
+		off, err = strconv.ParseInt(offset, 10, 0)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	count, err := strconv.ParseInt(limit, 10, 0)
-	if err != nil {
-		tracing.SetSpanErr(span, err)
-		return nil, err
+	var count int64
+	if limit != "" {
+		count, err = strconv.ParseInt(limit, 10, 0)
+		if err != nil {
+			tracing.SetSpanErr(span, err)
+			return nil, err
+		}
 	}
 
 	ids, err := db.redis.Sort(ctx, articlesPrefix, &redis.Sort{
@@ -57,13 +63,13 @@ func (db DB) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Ar
 		Offset: off,
 		Count:  count,
 		Alpha:  true,
+		Order:  "DESC",
 	}).Result()
 
 	if err != nil {
 		return nil, err
 	}
 
-	articles := []entity.Article{}
 	commands := []*redis.MapStringStringCmd{}
 	pipeline := db.redis.Pipeline()
 
@@ -96,12 +102,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	prefixedId := addArticlesPrefix(article.Id)
 
 	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		values := map[string]interface{}{
-			"id":      article.Id,
-			"user_id": article.UserId,
-			"title":   article.Title,
-			"body":    article.Body,
-		}
+		values := mapArticle(article)
 		db.redis.HSet(ctx, prefixedId, values)
 		db.redis.SAdd(ctx, articlesPrefix, article.Id)
 		return nil
