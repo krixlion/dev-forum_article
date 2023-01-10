@@ -52,6 +52,10 @@ func setUpMQ() *rabbitmq.RabbitMQ {
 }
 
 func TestPubSub(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Pub/Sub integration test")
+	}
+
 	mq := setUpMQ()
 	defer mq.Close()
 
@@ -105,6 +109,10 @@ func TestPubSub(t *testing.T) {
 }
 
 func TestPubSubPipeline(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Pub/Sub Pipeline integration test")
+	}
+
 	mq := setUpMQ()
 	defer mq.Close()
 

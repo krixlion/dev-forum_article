@@ -8,6 +8,10 @@ package service_test
 // )
 
 // func Test(t *testing.T) {
+// if testing.Short() {
+// 	t.Skip("skipping integration test")
+// }
+
 // 	srv := service.NewArticleService(50051)
 
 // 	srv.Run(context.Background())

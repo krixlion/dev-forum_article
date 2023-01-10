@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -187,6 +188,15 @@ func addArticlesPrefix(key string) string {
 	return fmt.Sprintf("%s:%s", articlesPrefix, key)
 }
 
+func toLowerSnakeCase(str string) string {
+	matchFirstCap := regexp.MustCompile("(.)([A-Z][a-z]+)")
+	matchAllCap := regexp.MustCompile("([a-z0-9])([A-Z])")
+
+	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
+	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ToLower(snake)
+}
+
 func mapArticle(article entity.Article) map[string]string {
 	v := reflect.ValueOf(article)
 	values := make(map[string]string)
@@ -194,7 +204,7 @@ func mapArticle(article entity.Article) map[string]string {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		if s := field.String(); s != "" {
-			fieldName := strings.ToLower(v.Type().Field(i).Name)
+			fieldName := toLowerSnakeCase(v.Type().Field(i).Name)
 			values[fieldName] = s
 		}
 	}

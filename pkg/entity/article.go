@@ -13,15 +13,10 @@ type Article struct {
 }
 
 func ArticleFromPb(v *pb.Article) Article {
-	id := v.GetId()
-	userId := v.GetUserId()
-	title := v.GetTitle()
-	body := v.GetBody()
-
 	return Article{
-		Id:     id,
-		UserId: userId,
-		Title:  title,
-		Body:   body,
+		Id:     v.GetId(),
+		UserId: v.GetUserId(),
+		Title:  v.GetTitle(),
+		Body:   v.GetBody(),
 	}
 }

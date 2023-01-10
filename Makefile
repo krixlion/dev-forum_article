@@ -40,7 +40,10 @@ docker-test-gen-coverage:
 k8s-mount-project:
 	mkdir /mnt/wsl/k8s-mount && sudo mount --bind . /mnt/wsl/k8s-mount
 
-k8s-test: # param: args
+k8s-unit-test: # param: args
+	$(kubernetes) exec -it deploy/article-d -- go test -race ${args} ./...  
+
+k8s-integration-test: # param: args
 	$(kubernetes) exec -it deploy/article-d -- go test -race ${args} ./...  
 
 k8s-test-gen-coverage:

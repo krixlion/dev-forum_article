@@ -48,6 +48,10 @@ func setUpDB() query.DB {
 }
 
 func TestCRUD(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping CRUD integration test")
+	}
+
 	db := setUpDB()
 	defer db.Close()
 
