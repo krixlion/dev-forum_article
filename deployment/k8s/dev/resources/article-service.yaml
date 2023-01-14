@@ -56,9 +56,9 @@ spec:
       containers:
         - env:
             - name: TESTING
-              value: "false"
+              value: "nope"
             - name: TEST_PATH
-              value: pkg/net/rabbitmq/pubsub_test.go
+              value: github.com/krixlion/dev-forum_article/pkg/event
             - name: BUILD_ARGS
               value: -race cmd/main.go
             - name: DEBUG_PORT

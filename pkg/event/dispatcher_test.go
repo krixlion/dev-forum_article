@@ -2,17 +2,26 @@ package event
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-type nullHandler struct{}
+type mockHandler struct {
+	*mock.Mock
+}
 
-func (nullHandler) Handle(Event) {}
+func (h mockHandler) Handle(e Event) {
+	h.Called(e)
+}
 
 func containsHandler(handlers []Handler, target Handler) bool {
 	for _, handler := range handlers {
-		if cmp.Equal(handler, target) {
+		if cmp.Equal(handler, target, cmpopts.IgnoreUnexported(mock.Mock{})) {
 			return true
 		}
 	}
@@ -27,13 +36,13 @@ func TestSubscribe(t *testing.T) {
 	}{
 		{
 			desc:    "Check if simple handler is subscribed succesfully",
-			handler: nullHandler{},
+			handler: &mockHandler{},
 			eTypes:  []EventType{ArticleCreated, ArticleDeleted, UserCreated},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			dispatcher := MakeDispatcher()
+			dispatcher := MakeDispatcher(10)
 			dispatcher.Subscribe(tC.handler, tC.eTypes...)
 
 			for _, eType := range tC.eTypes {
@@ -41,6 +50,83 @@ func TestSubscribe(t *testing.T) {
 					t.Errorf("Handler was not registered succesfully")
 				}
 			}
+		})
+	}
+}
+
+func TestMergeChans(t *testing.T) {
+	testCases := []struct {
+		desc string
+		want []Event
+	}{
+		{
+			desc: "Test if receives all events from multiple channels",
+			want: []Event{
+				{
+					AggregateId: gentest.RandomString(5),
+				},
+				{
+					AggregateId: gentest.RandomString(5),
+					Type:        ArticleDeleted,
+				},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+
+			chans := func() (chans []<-chan Event) {
+				for _, e := range tC.want {
+					v := make(chan Event, 1)
+					v <- e
+					chans = append(chans, v)
+				}
+				return
+			}()
+
+			out := mergeChans(chans...)
+			var got []Event
+			for i := 0; i < len(tC.want); i++ {
+				got = append(got, <-out)
+			}
+
+			if !assert.ElementsMatch(t, got, tC.want) {
+				t.Fatalf("Events are not equal:\n got = %+v\n want = %+v\n", got, tC.want)
+			}
+		})
+	}
+}
+
+func TestDispatch(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		arg     Event
+		handler mockHandler
+	}{
+		{
+			desc: "Test if handler is called on simple random event",
+			arg: Event{
+				Type:        ArticleCreated,
+				AggregateId: "article",
+			},
+			handler: func() mockHandler {
+				m := mockHandler{new(mock.Mock)}
+				m.On("Handle", mock.AnythingOfType("Event")).Return().Times(1)
+				return m
+			}(),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			d := MakeDispatcher(2)
+			d.Subscribe(tC.handler, tC.arg.Type)
+			d.Dispatch(tC.arg)
+
+			// Wait for the handler to get invoked.
+			time.Sleep(time.Millisecond)
+
+			tC.handler.AssertCalled(t, "Handle", tC.arg)
+			tC.handler.AssertNumberOfCalls(t, "Handle", 1)
 		})
 	}
 }

@@ -12,7 +12,7 @@ type Article struct {
 	Body   string `redis:"body" json:"body,omitempty"`
 }
 
-func ArticleFromPb(v *pb.Article) Article {
+func ArticleFromPB(v *pb.Article) Article {
 	return Article{
 		Id:     v.GetId(),
 		UserId: v.GetUserId(),

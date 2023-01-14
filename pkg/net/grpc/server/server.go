@@ -38,7 +38,7 @@ func (s ArticleServer) Close() error {
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
-	article := entity.ArticleFromPb(req.GetArticle())
+	article := entity.ArticleFromPB(req.GetArticle())
 	id, err := uuid.NewV4()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -70,7 +70,7 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	article := entity.ArticleFromPb(req.GetArticle())
+	article := entity.ArticleFromPB(req.GetArticle())
 
 	if err := s.Storage.Update(ctx, article); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())

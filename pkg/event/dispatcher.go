@@ -6,22 +6,23 @@ import (
 )
 
 type Dispatcher struct {
-	handlers map[EventType][]Handler
-	events   <-chan Event
-	mu       sync.Mutex
+	maxWorkers int
+	handlers   map[EventType][]Handler
+	events     <-chan Event
+	mu         sync.Mutex
 }
 
-func MakeDispatcher() Dispatcher {
+func MakeDispatcher(maxWorkers int) Dispatcher {
 	return Dispatcher{
-		handlers: make(map[EventType][]Handler),
+		maxWorkers: maxWorkers,
+		handlers:   make(map[EventType][]Handler),
 	}
 }
 
 // AddEventSources registers provided channels as an event source.
 // This method is not thread safe and should be called before Run().
 func (d *Dispatcher) AddEventSources(sources ...<-chan Event) {
-	out := mergeChans(sources...)
-	d.events = out
+	d.events = mergeChans(sources...)
 }
 
 func (d *Dispatcher) Run(ctx context.Context) {
@@ -44,8 +45,13 @@ func (d *Dispatcher) Subscribe(handler Handler, eTypes ...EventType) {
 }
 
 func (d *Dispatcher) Dispatch(e Event) {
+	limit := make(chan struct{}, d.maxWorkers)
 	for _, handler := range d.handlers[e.Type] {
-		go handler.Handle(e)
+		limit <- struct{}{}
+		go func(handler Handler) {
+			handler.Handle(e)
+			<-limit
+		}(handler)
 	}
 }
 

@@ -12,11 +12,11 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/event/broker"
 	"github.com/krixlion/dev-forum_article/pkg/logging"
 	"github.com/krixlion/dev-forum_article/pkg/net/grpc/server"
-	"github.com/krixlion/dev-forum_article/pkg/net/rabbitmq"
 	"github.com/krixlion/dev-forum_article/pkg/storage"
 	"github.com/krixlion/dev-forum_article/pkg/storage/eventstore"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
+	rabbitmq "github.com/krixlion/dev-forum_rabbitmq"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
@@ -33,7 +33,7 @@ type ArticleService struct {
 	// Consumer for events used to update and sync the read model.
 	syncEventSource event.Consumer
 	broker          event.Broker
-	dispatcher      event.Dispatcher
+	dispatcher      *event.Dispatcher
 
 	logger logging.Logger
 }
@@ -81,7 +81,7 @@ func NewArticleService(grpcPort int) *ArticleService {
 
 	mq := rabbitmq.NewRabbitMQ(consumer, mq_user, mq_pass, mq_host, mq_port, mqConfig, logger, tracer)
 	broker := broker.NewBroker(mq, logger)
-	dispatcher := event.MakeDispatcher()
+	dispatcher := event.MakeDispatcher(20)
 	dispatcher.Subscribe(event.HandlerFunc(storage.CatchUp), event.ArticleCreated, event.ArticleDeleted, event.ArticleUpdated)
 
 	srv := server.ArticleServer{
@@ -101,7 +101,7 @@ func NewArticleService(grpcPort int) *ArticleService {
 
 		srv: srv,
 
-		dispatcher:      dispatcher,
+		dispatcher:      &dispatcher,
 		broker:          broker,
 		syncEventSource: &cmd,
 

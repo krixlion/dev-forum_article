@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/krixlion/dev-forum_article/pkg/event"
-	"github.com/krixlion/dev-forum_article/pkg/net/rabbitmq"
+	rabbitmq "github.com/krixlion/dev-forum_rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
