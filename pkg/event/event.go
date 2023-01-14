@@ -6,11 +6,10 @@ import (
 
 // Events are sent to the queue in JSON format.
 type Event struct {
-	AggregateId string `json:"aggregate_id,omitempty"`
-	// Entity      string    `json:"entity,omitempty"`
-	Type      EventType `json:"type,omitempty"`
-	Body      []byte    `json:"body,omitempty"` // Must be marshaled to JSON.
-	Timestamp time.Time `json:"timestamp,omitempty"`
+	AggregateId string    `json:"aggregate_id,omitempty"`
+	Type        EventType `json:"type,omitempty"`
+	Body        []byte    `json:"body,omitempty"` // Must be marshaled to JSON.
+	Timestamp   time.Time `json:"timestamp,omitempty"`
 }
 
 type EventType string

@@ -22,7 +22,7 @@ func TestArticleFromPB(t *testing.T) {
 		want entity.Article
 	}{
 		{
-			desc: "Test if works on simple data",
+			desc: "Test if works on simple random data",
 			arg: &pb.Article{
 				Id:     id,
 				UserId: userId,
