@@ -3,11 +3,11 @@ package entity_test
 import (
 	"testing"
 
-	"github.com/Krixlion/def-forum_proto/article_service/pb"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-proto/article_service/pb"
 )
 
 func Test_ArticleFromPB(t *testing.T) {

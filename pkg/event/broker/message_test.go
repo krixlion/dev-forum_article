@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/krixlion/dev-forum_article/pkg/event"
-	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
-	rabbitmq "github.com/krixlion/dev-forum_rabbitmq"
+	"github.com/krixlion/dev_forum-article/pkg/event"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 )
 
 func Test_messageFromEvent(t *testing.T) {

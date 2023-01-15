@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/event"
-	"github.com/krixlion/dev-forum_article/pkg/logging"
-	"github.com/krixlion/dev-forum_article/pkg/tracing"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/event"
+	"github.com/krixlion/dev_forum-article/pkg/logging"
+	"github.com/krixlion/dev_forum-article/pkg/tracing"
 	"go.opentelemetry.io/otel"
 )
 

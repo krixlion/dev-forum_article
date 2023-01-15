@@ -5,7 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/gofrs/uuid"
-	"github.com/krixlion/dev-forum_article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
 )
 
 func RandomString(length int) string {

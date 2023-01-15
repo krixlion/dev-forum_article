@@ -4,13 +4,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/krixlion/dev-forum_article/cmd/service"
-	"github.com/krixlion/dev-forum_article/pkg/event/broker"
-	"github.com/krixlion/dev-forum_article/pkg/logging"
-	"github.com/krixlion/dev-forum_article/pkg/storage/eventstore"
-	"github.com/krixlion/dev-forum_article/pkg/storage/query"
-	"github.com/krixlion/dev-forum_article/pkg/tracing"
-	rabbitmq "github.com/krixlion/dev-forum_rabbitmq"
+	"github.com/krixlion/dev_forum-article/cmd/service"
+	"github.com/krixlion/dev_forum-article/pkg/event/broker"
+	"github.com/krixlion/dev_forum-article/pkg/logging"
+	"github.com/krixlion/dev_forum-article/pkg/storage/eventstore"
+	"github.com/krixlion/dev_forum-article/pkg/storage/query"
+	"github.com/krixlion/dev_forum-article/pkg/tracing"
+	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 	"go.opentelemetry.io/otel"
 )
 

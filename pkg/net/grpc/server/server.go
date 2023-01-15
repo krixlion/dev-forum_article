@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Krixlion/def-forum_proto/article_service/pb"
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/logging"
-	"github.com/krixlion/dev-forum_article/pkg/storage"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/logging"
+	"github.com/krixlion/dev_forum-article/pkg/storage"
+	"github.com/krixlion/dev_forum-proto/article_service/pb"
 
 	"github.com/gofrs/uuid"
 	"google.golang.org/grpc/codes"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
-	"github.com/krixlion/dev-forum_article/pkg/logging"
+	"github.com/krixlion/dev_forum-article/pkg/logging"
 )
 
 type DB struct {

@@ -8,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Krixlion/def-forum_proto/article_service/pb"
 	"github.com/gofrs/uuid"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/krixlion/dev_forum-proto/article_service/pb"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
-	"github.com/krixlion/dev-forum_article/pkg/net/grpc/server"
-	"github.com/krixlion/dev-forum_article/pkg/storage"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-article/pkg/net/grpc/server"
+	"github.com/krixlion/dev_forum-article/pkg/storage"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

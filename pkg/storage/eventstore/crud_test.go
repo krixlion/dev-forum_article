@@ -9,11 +9,11 @@ import (
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
 	"github.com/google/go-cmp/cmp"
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/env"
-	"github.com/krixlion/dev-forum_article/pkg/event"
-	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
-	"github.com/krixlion/dev-forum_article/pkg/helpers/nulls"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/env"
+	"github.com/krixlion/dev_forum-article/pkg/event"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/nulls"
 )
 
 var (

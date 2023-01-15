@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/krixlion/dev-forum_article/cmd/service"
-	"github.com/krixlion/dev-forum_article/pkg/env"
-	"github.com/krixlion/dev-forum_article/pkg/logging"
-	"github.com/krixlion/dev-forum_article/pkg/tracing"
+	"github.com/krixlion/dev_forum-article/cmd/service"
+	"github.com/krixlion/dev_forum-article/pkg/env"
+	"github.com/krixlion/dev_forum-article/pkg/logging"
+	"github.com/krixlion/dev_forum-article/pkg/tracing"
 )
 
 // Hardcoded root dir name.

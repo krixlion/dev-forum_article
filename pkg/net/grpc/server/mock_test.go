@@ -3,8 +3,8 @@ package server_test
 import (
 	"context"
 
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/event"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/event"
 	"github.com/stretchr/testify/mock"
 )
 

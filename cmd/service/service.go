@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Krixlion/def-forum_proto/article_service/pb"
-	"github.com/krixlion/dev-forum_article/pkg/event"
-	"github.com/krixlion/dev-forum_article/pkg/logging"
-	"github.com/krixlion/dev-forum_article/pkg/net/grpc/server"
-	"github.com/krixlion/dev-forum_article/pkg/storage"
+	"github.com/krixlion/dev_forum-article/pkg/event"
+	"github.com/krixlion/dev_forum-article/pkg/logging"
+	"github.com/krixlion/dev_forum-article/pkg/net/grpc/server"
+	"github.com/krixlion/dev_forum-article/pkg/storage"
+	"github.com/krixlion/dev_forum-proto/article_service/pb"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 

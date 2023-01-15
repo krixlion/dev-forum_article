@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/go-redis/redis/v9"
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/tracing"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/tracing"
 	"go.opentelemetry.io/otel"
 )
 

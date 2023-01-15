@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-redis/redis/extra/redisotel/v9"
 	"github.com/go-redis/redis/v9"
-	"github.com/krixlion/dev-forum_article/pkg/logging"
+	"github.com/krixlion/dev_forum-article/pkg/logging"
 )
 
 type DB struct {

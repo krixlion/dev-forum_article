@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/krixlion/dev-forum_article/pkg/event"
-	rabbitmq "github.com/krixlion/dev-forum_rabbitmq"
+	"github.com/krixlion/dev_forum-article/pkg/event"
+	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 

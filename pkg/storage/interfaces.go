@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/event"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/event"
 )
 
 // Command Query Responsibility Segregation Storage is a standard storage

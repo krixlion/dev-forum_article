@@ -58,7 +58,7 @@ spec:
             - name: TESTING
               value: "nope"
             - name: TEST_PATH
-              value: github.com/krixlion/dev-forum_article/pkg/event
+              value: github.com/krixlion/dev_forum-article/pkg/event
             - name: BUILD_ARGS
               value: -race cmd/main.go
             - name: DEBUG_PORT

@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/krixlion/dev-forum_article/pkg/entity"
-	"github.com/krixlion/dev-forum_article/pkg/env"
-	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
-	"github.com/krixlion/dev-forum_article/pkg/helpers/nulls"
-	"github.com/krixlion/dev-forum_article/pkg/storage/query"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/env"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/nulls"
+	"github.com/krixlion/dev_forum-article/pkg/storage/query"
 )
 
 var (

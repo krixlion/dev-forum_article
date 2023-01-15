@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-redis/redis/v9"
-	"github.com/krixlion/dev-forum_article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/entity"
 )
 
 type scanCmder interface {

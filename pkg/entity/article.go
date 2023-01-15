@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"github.com/Krixlion/def-forum_proto/article_service/pb"
+	"github.com/krixlion/dev_forum-proto/article_service/pb"
 )
 
 // This service's entity.
