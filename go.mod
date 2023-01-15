@@ -9,7 +9,7 @@ require (
 	github.com/gofrs/uuid v4.3.1+incompatible
 	github.com/google/go-cmp v0.5.9
 	github.com/joho/godotenv v1.4.0
-	github.com/krixlion/dev_forum-proto v0.0.0-20230114170133-7bcbf60ac34d
+	github.com/krixlion/dev_forum-proto v0.0.0-20230115215427-244ac9e5f2d1
 	github.com/krixlion/dev_forum-rabbitmq v0.0.0-20230115205601-587532754079
 	github.com/prometheus/client_golang v1.14.0
 	github.com/rabbitmq/amqp091-go v1.5.0

@@ -80,7 +80,7 @@ func Test_Get(t *testing.T) {
 		{
 			desc: "Test if response is returned properly on simple request",
 			arg: &pb.GetArticleRequest{
-				ArticleId: article.Id,
+				Id: article.Id,
 			},
 			want: &pb.GetArticleResponse{
 				Article: article,
@@ -93,7 +93,7 @@ func Test_Get(t *testing.T) {
 		{
 			desc: "Test if error is returned properly on storage error",
 			arg: &pb.GetArticleRequest{
-				ArticleId: "",
+				Id: "",
 			},
 			want:    nil,
 			wantErr: true,
@@ -284,7 +284,7 @@ func Test_Delete(t *testing.T) {
 		{
 			desc: "Test if response is returned properly on simple request",
 			arg: &pb.DeleteArticleRequest{
-				ArticleId: article.Id,
+				Id: article.Id,
 			},
 			want: &pb.DeleteArticleResponse{},
 			storage: func() (m mockStorage) {
@@ -295,7 +295,7 @@ func Test_Delete(t *testing.T) {
 		{
 			desc: "Test if error is returned properly on storage error",
 			arg: &pb.DeleteArticleRequest{
-				ArticleId: article.Id,
+				Id: article.Id,
 			},
 			want:    nil,
 			wantErr: true,

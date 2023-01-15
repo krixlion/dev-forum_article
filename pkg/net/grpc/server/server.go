@@ -59,7 +59,7 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	if err := s.Storage.Delete(ctx, req.GetArticleId()); err != nil {
+	if err := s.Storage.Delete(ctx, req.GetId()); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -83,7 +83,7 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	article, err := s.Storage.Get(ctx, req.GetArticleId())
+	article, err := s.Storage.Get(ctx, req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get article: %v", err)
 	}
