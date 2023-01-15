@@ -29,7 +29,8 @@ func Test_toLowerSnakeCase(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			got := toLowerSnakeCase(tC.arg)
 			if !cmp.Equal(got, tC.want) {
-				t.Fatalf("Wrong output:\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("Wrong output:\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 		})
 	}
@@ -58,7 +59,8 @@ func Test_mapArticle(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			got := mapArticle(tC.arg)
 			if !cmp.Equal(got, tC.want) {
-				t.Fatalf("Wrong output:\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("Wrong output:\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 		})
 	}
@@ -80,7 +82,8 @@ func Test_addArticlesPrefix(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			got := addArticlesPrefix(tC.arg)
 			if got != tC.want {
-				t.Fatalf("Failed to add prefix:\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("Failed to add prefix:\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 		})
 	}

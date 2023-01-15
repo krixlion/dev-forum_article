@@ -63,11 +63,13 @@ func Test_Get(t *testing.T) {
 			db := storage.NewStorage(mockCmd{}, tC.query, nulls.NullLogger{})
 			got, err := db.Get(tC.args.ctx, tC.args.id)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("storage.Get():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("storage.Get():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				return
 			}
 
 			if !cmp.Equal(got, tC.want) {
-				t.Fatalf("storage.Get():\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("storage.Get():\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 			assert.True(t, tC.query.AssertCalled(t, "Get", mock.Anything, tC.args.id))
 		})
@@ -122,11 +124,13 @@ func Test_GetMultiple(t *testing.T) {
 			db := storage.NewStorage(mockCmd{}, tC.query, nulls.NullLogger{})
 			got, err := db.GetMultiple(tC.args.ctx, tC.args.offset, tC.args.limit)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("storage.GetMultiple():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("storage.GetMultiple():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				return
 			}
 
 			if !cmp.Equal(got, tC.want, cmpopts.EquateEmpty()) {
-				t.Fatalf("storage.GetMultiple():\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("storage.GetMultiple():\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 
 			assert.True(t, tC.query.AssertCalled(t, "GetMultiple", mock.Anything, tC.args.offset, tC.args.limit))
@@ -177,7 +181,8 @@ func Test_Create(t *testing.T) {
 			db := storage.NewStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
 			err := db.Create(tC.args.ctx, tC.args.article)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("storage.Create():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("storage.Create():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				return
 			}
 			assert.True(t, tC.cmd.AssertCalled(t, "Create", mock.Anything, tC.args.article))
 		})
@@ -227,7 +232,8 @@ func Test_Update(t *testing.T) {
 			db := storage.NewStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
 			err := db.Update(tC.args.ctx, tC.args.article)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("storage.Update():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("storage.Update():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				return
 			}
 			assert.True(t, tC.cmd.AssertCalled(t, "Update", mock.Anything, tC.args.article))
 		})
@@ -277,7 +283,8 @@ func Test_Delete(t *testing.T) {
 			db := storage.NewStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
 			err := db.Delete(tC.args.ctx, tC.args.id)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("storage.Delete():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("storage.Delete():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				return
 			}
 			assert.True(t, tC.cmd.AssertCalled(t, "Delete", mock.Anything, tC.args.id))
 			assert.True(t, tC.cmd.AssertExpectations(t))
@@ -348,7 +355,8 @@ func Test_CatchUp(t *testing.T) {
 				var id string
 				err := json.Unmarshal(tC.arg.Body, &id)
 				if err != nil {
-					t.Fatalf("Failed to unmarshal random JSON ID. Error: %+v", err)
+					t.Errorf("Failed to unmarshal random JSON ID. Error: %+v", err)
+					return
 				}
 
 				assert.True(t, tC.query.AssertCalled(t, tC.method, mock.Anything, id))
@@ -357,7 +365,8 @@ func Test_CatchUp(t *testing.T) {
 				var article entity.Article
 				err := json.Unmarshal(tC.arg.Body, &article)
 				if err != nil {
-					t.Fatalf("Failed to unmarshal random JSON article. Error: %+v", err)
+					t.Errorf("Failed to unmarshal random JSON article. Error: %+v", err)
+					return
 				}
 
 				assert.True(t, tC.query.AssertCalled(t, tC.method, mock.Anything, article))

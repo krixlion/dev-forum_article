@@ -11,7 +11,7 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/env"
 	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
-	"github.com/krixlion/dev-forum_article/pkg/logging"
+	"github.com/krixlion/dev-forum_article/pkg/helpers/nulls"
 	"github.com/krixlion/dev-forum_article/pkg/storage/query"
 )
 
@@ -29,8 +29,7 @@ func init() {
 }
 
 func setUpDB() query.DB {
-	logger, _ := logging.NewLogger()
-	db, err := query.MakeDB(host, port, pass, logger)
+	db, err := query.MakeDB(host, port, pass, nulls.NullLogger{})
 	if err != nil {
 		log.Fatalf("Failed to make DB, err: %s", err)
 	}
@@ -131,16 +130,20 @@ func Test_GetMultiple(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			db := setUpDB()
+			defer db.Close()
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 			defer cancel()
 
 			got, err := db.GetMultiple(ctx, tC.args.offset, tC.args.limit)
 			if err != nil {
-				t.Fatalf("db.GetMultiple() error = %+v\n", err)
+				t.Errorf("db.GetMultiple() error = %+v\n", err)
+				return
 			}
 
 			if !cmp.Equal(got, tC.want) {
-				t.Fatalf("db.GetMultiple():\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("db.GetMultiple():\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 		})
 	}
@@ -175,16 +178,21 @@ func Test_Get(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
+			db := setUpDB()
+			defer db.Close()
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			db := setUpDB()
+
 			got, err := db.Get(ctx, tC.arg)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("db.Get():\n error = %+v wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("db.Get():\n error = %+v wantErr = %+v\n", err, tC.wantErr)
+				return
 			}
 
 			if !cmp.Equal(got, tC.want) {
-				t.Fatalf("db.Get():\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("db.Get():\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 		})
 	}
@@ -211,21 +219,27 @@ func Test_Create(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
+			db := setUpDB()
+			defer db.Close()
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			db := setUpDB()
+
 			err := db.Create(ctx, tC.arg)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("db.Create() error = %+v", err)
+				t.Errorf("db.Create() error = %+v", err)
+				return
 			}
 
 			got, err := db.Get(ctx, tC.arg.Id)
 			if err != nil {
-				t.Fatalf("db.Create() failed to db.Get() article:\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("db.Create() failed to db.Get() article:\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				return
 			}
 
 			if !cmp.Equal(got, tC.arg) {
-				t.Fatalf("db.Create():\n got = %+v\n want = %+v\n", got, tC.arg)
+				t.Errorf("db.Create():\n got = %+v\n want = %+v\n", got, tC.arg)
+				return
 			}
 		})
 	}
@@ -262,21 +276,27 @@ func Test_Update(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
+			db := setUpDB()
+			defer db.Close()
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			db := setUpDB()
+
 			err := db.Update(ctx, tC.arg)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("db.Update():\n error = %+v wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("db.Update():\n error = %+v wantErr = %+v\n", err, tC.wantErr)
+				return
 			}
 
 			got, err := db.Get(ctx, tC.arg.Id)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("db.Update() failed to db.Get() article:\n error = %+v\n", err)
+				t.Errorf("db.Update() failed to db.Get() article:\n error = %+v\n", err)
+				return
 			}
 
 			if !cmp.Equal(got, tC.arg) && !tC.wantErr {
-				t.Fatalf("db.Update():\n got = %+v\n want = %+v\n", got, tC.arg)
+				t.Errorf("db.Update():\n got = %+v\n want = %+v\n", got, tC.arg)
+				return
 			}
 		})
 	}
@@ -298,18 +318,22 @@ func Test_Delete(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
+			db := setUpDB()
+			defer db.Close()
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			db := setUpDB()
 
 			err := db.Delete(ctx, tC.arg)
 			if err != nil {
-				t.Fatalf("db.Delete() error = %+v", err)
+				t.Errorf("db.Delete() error = %+v", err)
+				return
 			}
 
 			_, err = db.Get(ctx, tC.arg)
 			if err == nil {
-				t.Fatalf("db.Get() after db.Delete() returned nil error.")
+				t.Errorf("db.Get() after db.Delete() returned nil error.")
+				return
 			}
 		})
 	}

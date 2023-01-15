@@ -51,6 +51,7 @@ func Test_messageFromEvent(t *testing.T) {
 			got := messageFromEvent(tt.arg)
 			if !cmp.Equal(got, tt.want) {
 				t.Errorf("MakeMessageFromEvent() = %+v, want %+v", got, tt.want)
+				return
 			}
 		})
 	}
@@ -81,6 +82,7 @@ func Test_routeFromEvent(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			if got := routeFromEvent(tt.args.Type); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("makeRouteFromEvent() = %v, want %v", got, tt.want)
+				return
 			}
 		})
 	}

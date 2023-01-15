@@ -43,7 +43,8 @@ func Test_ArticleFromPB(t *testing.T) {
 			got := entity.ArticleFromPB(tC.arg)
 
 			if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.Article{})) {
-				t.Fatalf("Articles are not equal:\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 		})
 	}

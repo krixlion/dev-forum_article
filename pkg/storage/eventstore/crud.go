@@ -14,6 +14,10 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+func addArticlesPrefix(v string) string {
+	return fmt.Sprintf("%s-%s", "article", v)
+}
+
 func (db DB) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Create")
 	defer span.End()
@@ -42,7 +46,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 		EventType:   string(e.Type),
 		Data:        data,
 	}
-	streamID := fmt.Sprintf("%s-%s", "article", article.Id)
+	streamID := addArticlesPrefix(article.Id)
 
 	_, err = db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData)
 	if err != nil {
@@ -89,7 +93,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 		EventType:   string(e.Type),
 		Data:        data,
 	}
-	streamID := fmt.Sprintf("%s-%s", "article", article.Id)
+	streamID := addArticlesPrefix(article.Id)
 
 	_, err = db.client.AppendToStream(ctx, streamID, appendOpts, eventData)
 	if err != nil {
@@ -128,7 +132,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 		EventType:   string(e.Type),
 		Data:        data,
 	}
-	streamID := fmt.Sprintf("%s-%s", "article", id)
+	streamID := addArticlesPrefix(id)
 
 	_, err = db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData)
 
@@ -149,7 +153,7 @@ func (db DB) lastRevision(ctx context.Context, articleId string) (*esdb.Resolved
 		From:      esdb.End{},
 	}
 
-	streamID := fmt.Sprintf("%s-%s", "article", articleId)
+	streamID := addArticlesPrefix(articleId)
 
 	stream, err := db.client.ReadStream(ctx, streamID, readOpts, 1)
 	if err != nil {

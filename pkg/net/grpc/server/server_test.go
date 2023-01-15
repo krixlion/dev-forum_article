@@ -115,14 +115,16 @@ func Test_Get(t *testing.T) {
 
 			getResponse, err := client.Get(ctx, tC.arg)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("Failed to Get article, err: %v", err)
+				t.Errorf("Failed to Get article, err: %v", err)
+				return
 			}
 
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if getResponse != tC.want {
 				if !cmp.Equal(getResponse.Article, tC.want.Article, cmpopts.IgnoreUnexported(pb.Article{})) {
-					t.Fatalf("Articles are not equal:\n Got = %+v\n, want = %+v\n", getResponse.Article, tC.want.Article)
+					t.Errorf("Articles are not equal:\n Got = %+v\n, want = %+v\n", getResponse.Article, tC.want.Article)
+					return
 				}
 			}
 		})
@@ -179,17 +181,20 @@ func Test_Create(t *testing.T) {
 
 			createResponse, err := client.Create(ctx, tC.arg)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("Failed to Get article, err: %v", err)
+				t.Errorf("Failed to Get article, err: %v", err)
+				return
 			}
 
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if createResponse != tC.dontWant {
 				if cmp.Equal(createResponse.Id, tC.dontWant.Id) {
-					t.Fatalf("Article IDs was not reassigned:\n Got = %+v\n want = %+v\n", createResponse.Id, tC.dontWant.Id)
+					t.Errorf("Article IDs was not reassigned:\n Got = %+v\n want = %+v\n", createResponse.Id, tC.dontWant.Id)
+					return
 				}
 				if _, err := uuid.FromString(createResponse.Id); err != nil {
-					t.Fatalf("Article ID is not correct UUID:\n ID = %+v\n err = %+v", createResponse.Id, err)
+					t.Errorf("Article ID is not correct UUID:\n ID = %+v\n err = %+v", createResponse.Id, err)
+					return
 				}
 			}
 		})
@@ -244,14 +249,16 @@ func Test_Update(t *testing.T) {
 
 			got, err := client.Update(ctx, tC.arg)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("Failed to Update article, err: %v", err)
+				t.Errorf("Failed to Update article, err: %v", err)
+				return
 			}
 
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if got != tC.want {
 				if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.UpdateArticleResponse{})) {
-					t.Fatalf("Wrong response:\n got = %+v\n want = %+v\n", got, tC.want)
+					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tC.want)
+					return
 				}
 			}
 		})
@@ -306,14 +313,16 @@ func Test_Delete(t *testing.T) {
 
 			got, err := client.Delete(ctx, tC.arg)
 			if (err != nil) != tC.wantErr {
-				t.Fatalf("Failed to Delete article, err: %v", err)
+				t.Errorf("Failed to Delete article, err: %v", err)
+				return
 			}
 
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if got != tC.want {
 				if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.DeleteArticleResponse{})) {
-					t.Fatalf("Wrong response:\n got = %+v\n want = %+v\n", got, tC.want)
+					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tC.want)
+					return
 				}
 			}
 		})
@@ -376,20 +385,23 @@ func Test_GetStream(t *testing.T) {
 
 			stream, err := client.GetStream(ctx, tC.arg)
 			if err != nil {
-				t.Fatalf("Failed to Get stream, err: %v", err)
+				t.Errorf("Failed to Get stream, err: %v", err)
+				return
 			}
 
 			var got []*pb.Article
 			for i := 0; i < len(tC.want); i++ {
 				article, err := stream.Recv()
 				if (err != nil) != tC.wantErr {
-					t.Fatalf("Failed to receive article from stream, err: %v", err)
+					t.Errorf("Failed to receive article from stream, err: %v", err)
+					return
 				}
 				got = append(got, article)
 			}
 
 			if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.Article{})) {
-				t.Fatalf("Articles are not equal:\n Got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("Articles are not equal:\n Got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 		})
 	}

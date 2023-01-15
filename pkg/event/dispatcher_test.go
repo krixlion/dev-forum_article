@@ -94,7 +94,8 @@ func Test_mergeChans(t *testing.T) {
 			}
 
 			if !assert.ElementsMatch(t, got, tC.want) {
-				t.Fatalf("Events are not equal:\n got = %+v\n want = %+v\n", got, tC.want)
+				t.Errorf("Events are not equal:\n got = %+v\n want = %+v\n", got, tC.want)
+				return
 			}
 		})
 	}
@@ -153,7 +154,8 @@ func Test_Run(t *testing.T) {
 
 		// If time needed for Run to return was longer than a millisecond or unexpected error was returned.
 		if !errors.Is(err, context.Canceled) || stopTime > time.Millisecond {
-			t.Fatalf("Run did not stop on context cancellation\n Time needed for func to return: %v", stopTime.Seconds())
+			t.Errorf("Run did not stop on context cancellation\n Time needed for func to return: %v", stopTime.Seconds())
+			return
 		}
 	})
 }
