@@ -10,7 +10,7 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
 )
 
-func TestArticleFromPB(t *testing.T) {
+func Test_ArticleFromPB(t *testing.T) {
 	id := gentest.RandomString(3)
 	userId := gentest.RandomString(3)
 	body := gentest.RandomString(3)

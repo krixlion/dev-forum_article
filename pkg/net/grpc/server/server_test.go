@@ -28,7 +28,7 @@ import (
 // server allowing only for local calls for testing.
 // Returns a client to interact with the server.
 // The server is shutdown when ctx.Done() receives.
-func setUpServer(ctx context.Context, mock storage.Storage) pb.ArticleServiceClient {
+func setUpServer(ctx context.Context, mock storage.CQRStorage) pb.ArticleServiceClient {
 	// bufconn allows the server to call itself
 	// great for testing across whole infrastructure
 	lis := bufconn.Listen(1024 * 1024)
@@ -61,7 +61,7 @@ func setUpServer(ctx context.Context, mock storage.Storage) pb.ArticleServiceCli
 	return client
 }
 
-func TestGet(t *testing.T) {
+func Test_Get(t *testing.T) {
 	v := gentest.RandomArticle(2, 5)
 	article := &pb.Article{
 		Id:     v.Id,
@@ -75,7 +75,7 @@ func TestGet(t *testing.T) {
 		arg     *pb.GetArticleRequest
 		want    *pb.GetArticleResponse
 		wantErr bool
-		storage storage.Storage
+		storage storage.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -129,7 +129,7 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestCreate(t *testing.T) {
+func Test_Create(t *testing.T) {
 	v := gentest.RandomArticle(2, 5)
 	article := &pb.Article{
 		Id:     v.Id,
@@ -143,7 +143,7 @@ func TestCreate(t *testing.T) {
 		arg      *pb.CreateArticleRequest
 		dontWant *pb.CreateArticleResponse
 		wantErr  bool
-		storage  storage.Storage
+		storage  storage.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -196,7 +196,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func Test_Update(t *testing.T) {
 	v := gentest.RandomArticle(2, 5)
 	article := &pb.Article{
 		Id:     v.Id,
@@ -210,7 +210,7 @@ func TestUpdate(t *testing.T) {
 		arg     *pb.UpdateArticleRequest
 		want    *pb.UpdateArticleResponse
 		wantErr bool
-		storage storage.Storage
+		storage storage.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -258,7 +258,7 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func Test_Delete(t *testing.T) {
 	v := gentest.RandomArticle(2, 5)
 	article := &pb.Article{
 		Id:     v.Id,
@@ -272,7 +272,7 @@ func TestDelete(t *testing.T) {
 		arg     *pb.DeleteArticleRequest
 		want    *pb.DeleteArticleResponse
 		wantErr bool
-		storage storage.Storage
+		storage storage.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -320,7 +320,7 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestGetStream(t *testing.T) {
+func Test_GetStream(t *testing.T) {
 	var articles []entity.Article
 	for i := 0; i < 5; i++ {
 		article := gentest.RandomArticle(2, 5)
@@ -343,7 +343,7 @@ func TestGetStream(t *testing.T) {
 		arg     *pb.GetArticlesRequest
 		want    []*pb.Article
 		wantErr bool
-		storage storage.Storage
+		storage storage.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",

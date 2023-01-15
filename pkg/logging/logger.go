@@ -38,6 +38,8 @@ func NewLogger() (Logger, error) {
 	sugar := otelLogger.Sugar()
 	defer sugar.Sync()
 
+	otelzap.ReplaceGlobals(otelLogger)
+
 	return log{
 		l: sugar,
 	}, err

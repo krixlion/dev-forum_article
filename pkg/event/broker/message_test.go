@@ -12,7 +12,7 @@ import (
 	rabbitmq "github.com/krixlion/dev-forum_rabbitmq"
 )
 
-func Test_MessageFromEvent(t *testing.T) {
+func Test_messageFromEvent(t *testing.T) {
 
 	jsonArticle := gentest.RandomJSONArticle(3, 5)
 	e := event.Event{
@@ -48,7 +48,7 @@ func Test_MessageFromEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			got := MessageFromEvent(tt.arg)
+			got := messageFromEvent(tt.arg)
 			if !cmp.Equal(got, tt.want) {
 				t.Errorf("MakeMessageFromEvent() = %+v, want %+v", got, tt.want)
 			}
@@ -56,7 +56,7 @@ func Test_MessageFromEvent(t *testing.T) {
 	}
 }
 
-func Test_RouteFromEvent(t *testing.T) {
+func Test_routeFromEvent(t *testing.T) {
 	type args struct {
 		Type event.EventType
 	}
@@ -79,7 +79,7 @@ func Test_RouteFromEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			if got := RouteFromEvent(tt.args.Type); !reflect.DeepEqual(got, tt.want) {
+			if got := routeFromEvent(tt.args.Type); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("makeRouteFromEvent() = %v, want %v", got, tt.want)
 			}
 		})

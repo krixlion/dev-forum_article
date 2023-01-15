@@ -26,7 +26,7 @@ func NewBroker(mq *rabbitmq.RabbitMQ, logger logging.Logger) *Broker {
 
 // ResilientPublish returns an error only if the queue is full or if it failed to serialize the event.
 func (b *Broker) ResilientPublish(e event.Event) error {
-	msg := MessageFromEvent(e)
+	msg := messageFromEvent(e)
 	if err := b.messageQueue.Enqueue(msg); err != nil {
 		return err
 	}
@@ -34,12 +34,12 @@ func (b *Broker) ResilientPublish(e event.Event) error {
 }
 
 func (b *Broker) Publish(ctx context.Context, e event.Event) error {
-	msg := MessageFromEvent(e)
+	msg := messageFromEvent(e)
 	return b.messageQueue.Publish(ctx, msg)
 }
 
 func (b *Broker) Consume(ctx context.Context, queue string, eventType event.EventType) (<-chan event.Event, error) {
-	route := RouteFromEvent(eventType)
+	route := routeFromEvent(eventType)
 
 	messages, err := b.messageQueue.Consume(ctx, queue, route)
 	if err != nil {

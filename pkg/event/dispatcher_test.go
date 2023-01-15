@@ -31,7 +31,7 @@ func containsHandler(handlers []Handler, target Handler) bool {
 	return false
 }
 
-func TestSubscribe(t *testing.T) {
+func Test_Subscribe(t *testing.T) {
 	testCases := []struct {
 		desc    string
 		handler Handler
@@ -57,7 +57,7 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 
-func TestMergeChans(t *testing.T) {
+func Test_mergeChans(t *testing.T) {
 	testCases := []struct {
 		desc string
 		want []Event
@@ -100,7 +100,7 @@ func TestMergeChans(t *testing.T) {
 	}
 }
 
-func TestDispatch(t *testing.T) {
+func Test_Dispatch(t *testing.T) {
 	testCases := []struct {
 		desc    string
 		arg     Event
@@ -125,8 +125,8 @@ func TestDispatch(t *testing.T) {
 			d.Subscribe(tC.handler, tC.arg.Type)
 			d.Dispatch(tC.arg)
 
-			// Wait for the handler to get invoked.
-			time.Sleep(time.Millisecond)
+			// Wait for the handler to get invoked in a seperate goroutine.
+			time.Sleep(time.Millisecond * 5)
 
 			tC.handler.AssertCalled(t, "Handle", tC.arg)
 			tC.handler.AssertNumberOfCalls(t, "Handle", 1)
@@ -134,7 +134,7 @@ func TestDispatch(t *testing.T) {
 	}
 }
 
-func TestRun(t *testing.T) {
+func Test_Run(t *testing.T) {
 	t.Run("Test if Run() returns on context cancellation", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		errg, ctx := errgroup.WithContext(ctx)

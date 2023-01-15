@@ -8,15 +8,16 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/event"
 )
 
-type Storage interface {
-	Getter
-	WriteStorage
+// Command Query Responsibility Segregation Storage is a standard storage
+// that can apply events using CatchUp() method.
+type CQRStorage interface {
+	Storage
 	CatchUp(event.Event)
 }
 
-type ReadStorage interface {
+type Storage interface {
 	Getter
-	WriteStorage
+	Writer
 }
 
 type Getter interface {
@@ -25,7 +26,7 @@ type Getter interface {
 	GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error)
 }
 
-type WriteStorage interface {
+type Writer interface {
 	io.Closer
 	Create(context.Context, entity.Article) error
 	Update(context.Context, entity.Article) error
@@ -34,5 +35,5 @@ type WriteStorage interface {
 
 type Eventstore interface {
 	event.Consumer
-	WriteStorage
+	Writer
 }

@@ -18,7 +18,7 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	Storage storage.Storage
+	Storage storage.CQRStorage
 	Logger  logging.Logger
 }
 

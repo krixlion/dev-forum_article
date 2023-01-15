@@ -10,9 +10,9 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// MessageFromEvent returns a message suitable for pub/sub methods and
+// messageFromEvent returns a message suitable for pub/sub methods and
 // a non-nil error if the event could not be marshaled into JSON.
-func MessageFromEvent(e event.Event) rabbitmq.Message {
+func messageFromEvent(e event.Event) rabbitmq.Message {
 	body, err := json.Marshal(e)
 	if err != nil {
 		panic(fmt.Sprintf("Invalid JSON tags on event.Event type, err: %v", err))
@@ -21,12 +21,12 @@ func MessageFromEvent(e event.Event) rabbitmq.Message {
 	return rabbitmq.Message{
 		Body:        body,
 		ContentType: rabbitmq.ContentTypeJson,
-		Route:       RouteFromEvent(e.Type),
+		Route:       routeFromEvent(e.Type),
 		Timestamp:   e.Timestamp,
 	}
 }
 
-func RouteFromEvent(eType event.EventType) rabbitmq.Route {
+func routeFromEvent(eType event.EventType) rabbitmq.Route {
 	v := strings.Split(string(eType), "-")
 
 	return rabbitmq.Route{

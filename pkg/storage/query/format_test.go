@@ -8,7 +8,7 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
 )
 
-func TestToLowerSnakeCase(t *testing.T) {
+func Test_toLowerSnakeCase(t *testing.T) {
 	testCases := []struct {
 		desc string
 		arg  string
@@ -35,7 +35,7 @@ func TestToLowerSnakeCase(t *testing.T) {
 	}
 }
 
-func TestMapArticle(t *testing.T) {
+func Test_mapArticle(t *testing.T) {
 	article := gentest.RandomArticle(2, 5)
 
 	testCases := []struct {
@@ -64,7 +64,7 @@ func TestMapArticle(t *testing.T) {
 	}
 }
 
-func TestAddArticlesPrefix(t *testing.T) {
+func Test_addArticlesPrefix(t *testing.T) {
 	testCases := []struct {
 		desc string
 		arg  string

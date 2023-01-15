@@ -1,19 +1,14 @@
-package eventstore
+package service
 
-// import (
-// 	"testing"
+// import "testing"
 
-// 	"github.com/krixlion/dev-forum_article/pkg/event"
-// )
-
-// func TestConsume(t *testing.T) {
+// func Test_Get(t *testing.T) {
 // 	if testing.Short() {
-// 		t.Skip("Skipping Consume() integration test")
+// 		t.Skip("Skipping Get() integration test")
 // 	}
 
 // 	testCases := []struct {
 // 		desc string
-// 		arg  event.Event
 // 	}{
 // 		{
 // 			desc: "",

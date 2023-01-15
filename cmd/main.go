@@ -31,7 +31,7 @@ func main() {
 		logging.Log("Failed to initialize tracing", "err", err)
 	}
 
-	service := service.NewArticleService(port)
+	service := service.NewArticleService(port, getServiceDependencies())
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	service.Run(ctx)
 
