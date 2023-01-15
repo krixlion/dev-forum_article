@@ -13,20 +13,19 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/tracing"
 )
 
+// Hardcoded root dir name.
+const projectDir = "app"
+
 var port int
 
 func init() {
 	portFlag := flag.Int("p", 50051, "The gRPC server port")
 	flag.Parse()
 	port = *portFlag
+	env.Load(projectDir)
 }
 
-// Hardcoded root dir name.
-const projectDir = "app"
-
 func main() {
-	env.Load(projectDir)
-
 	shutdownTracing, err := tracing.InitProvider()
 	if err != nil {
 		logging.Log("Failed to initialize tracing", "err", err)

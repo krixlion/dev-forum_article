@@ -1,6 +1,8 @@
 package event
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/krixlion/dev-forum_article/pkg/helpers/gentest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/sync/errgroup"
 )
 
 type mockHandler struct {
@@ -129,4 +132,28 @@ func TestDispatch(t *testing.T) {
 			tC.handler.AssertNumberOfCalls(t, "Handle", 1)
 		})
 	}
+}
+
+func TestRun(t *testing.T) {
+	t.Run("Test if Run() returns on context cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		errg, ctx := errgroup.WithContext(ctx)
+
+		d := MakeDispatcher(20)
+		errg.Go(func() error {
+			d.Run(ctx)
+			return ctx.Err()
+		})
+
+		before := time.Now()
+		cancel()
+		err := errg.Wait()
+		after := time.Now()
+		stopTime := after.Sub(before)
+
+		// If time needed for Run to return was longer than a millisecond or unexpected error was returned.
+		if !errors.Is(err, context.Canceled) || stopTime > time.Millisecond {
+			t.Fatalf("Run did not stop on context cancellation\n Time needed for func to return: %v", stopTime.Seconds())
+		}
+	})
 }

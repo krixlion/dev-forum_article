@@ -63,3 +63,25 @@ func TestMapArticle(t *testing.T) {
 		})
 	}
 }
+
+func TestAddArticlesPrefix(t *testing.T) {
+	testCases := []struct {
+		desc string
+		arg  string
+		want string
+	}{
+		{
+			desc: "Test if correctly adds prefix to an alias",
+			arg:  "*->title",
+			want: "articles:*->title",
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			got := addArticlesPrefix(tC.arg)
+			if got != tC.want {
+				t.Fatalf("Failed to add prefix:\n got = %+v\n want = %+v\n", got, tC.want)
+			}
+		})
+	}
+}

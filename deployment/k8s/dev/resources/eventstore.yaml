@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
         - image: eventstore/eventstore:22.10.0-buster-slim
-          name: eventstore
+          name: eventstoredb
           ports: 
             - name: grpc
               containerPort: 2113
@@ -85,9 +85,32 @@ spec:
     version: v0.1.0
   clusterIP: None
   ports:
-    - name: http-rest
-      port: 9200
+    - name: http
+      port: 2113
       protocol: TCP
-    - name: inter-node
-      port: 9300
+---
+kind: Service
+apiVersion: v1
+metadata:
+  namespace: dev
+  # DON'T PREFIX THE NAME AS "eventstore", USE "eventstoredb" INSTEAD.
+  # Kubernetes will configure service using ENV vars prefixed with the service name.
+  # EventStoreDB is using configuration from ENV and it reads all values prefixed with "EVENTSTORE_".
+  # This will cause the DB to try and apply Kubernetes service settings and either 
+  # crash or overwrite some of the settings, for example used http port.
+  name: eventstoredb-service-ui
+  labels:
+    aggregate: article
+    database: eventstore
+    version: v0.1.0
+spec:
+  type: LoadBalancer
+  selector:
+    statefulset.kubernetes.io/pod-name: eventstore-cluster-0
+    aggregate: article
+    database: eventstore
+    version: v0.1.0
+  ports:
+    - name: http
+      port: 2113
       protocol: TCP

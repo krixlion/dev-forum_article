@@ -96,19 +96,12 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Create")
 	defer span.End()
 
-	prefixedId := addArticlesPrefix(article.Id)
-
-	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		values := mapArticle(article)
-		db.redis.HSet(ctx, prefixedId, values)
-		db.redis.SAdd(ctx, articlesPrefix, article.Id)
-		return nil
-	})
-
+	err := db.create(ctx, article)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return err
 	}
+
 	return nil
 }
 
@@ -116,15 +109,16 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Update")
 	defer span.End()
 
-	prefixedId := addArticlesPrefix(article.Id)
+	numOfKeys, err := db.redis.Exists(ctx, addArticlesPrefix(article.Id)).Result()
+	if err != nil {
+		return err
+	}
 
-	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		values := mapArticle(article)
-		db.redis.HSet(ctx, prefixedId, values)
-		db.redis.SAdd(ctx, articlesPrefix, article.Id)
-		return nil
-	})
+	if numOfKeys <= 0 {
+		return redis.Nil
+	}
 
+	err = db.create(ctx, article)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return err
@@ -139,6 +133,19 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	_, err := db.redis.TxPipelined(ctx, func(p redis.Pipeliner) error {
 		id = addArticlesPrefix(id)
 		db.redis.Del(ctx, id).Result()
+		return nil
+	})
+
+	return err
+}
+
+func (db DB) create(ctx context.Context, article entity.Article) error {
+	prefixedId := addArticlesPrefix(article.Id)
+
+	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		values := mapArticle(article)
+		db.redis.HSet(ctx, prefixedId, values)
+		db.redis.SAdd(ctx, articlesPrefix, article.Id)
 		return nil
 	})
 

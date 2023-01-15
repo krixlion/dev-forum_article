@@ -2,13 +2,11 @@ package query_test
 
 import (
 	"context"
-	"errors"
 	"log"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v9"
 	"github.com/google/go-cmp/cmp"
 	"github.com/krixlion/dev-forum_article/pkg/entity"
 	"github.com/krixlion/dev-forum_article/pkg/env"
@@ -47,56 +45,271 @@ func setUpDB() query.DB {
 	return db
 }
 
-func TestCRUD(t *testing.T) {
+func TestGetMultiple(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping CRUD integration test")
+		t.Skip("Skipping GetMultiple() integration test")
 	}
 
-	db := setUpDB()
-	defer db.Close()
-
-	article := gentest.RandomArticle(3, 5)
-
-	type testCase struct {
-		desc          string
-		arg           entity.Article
-		want          entity.Article
-		wantCreateErr bool
-		wantGetErr    bool
-		wantDelErr    bool
+	type args struct {
+		offset string
+		limit  string
 	}
-	testCases := []testCase{
+	testCases := []struct {
+		desc string
+		args args
+		want []entity.Article
+	}{
 		{
-			desc: "Check if created article is later returned and deleted correctly.",
-			arg:  article,
-			want: article,
+			desc: "Test if correctly returns keys added on K8s entrypoint",
+			args: args{
+				limit: "3",
+			},
+			want: []entity.Article{
+				{
+					Id:     "18",
+					UserId: "user_id-18",
+					Title:  "title-18",
+					Body:   "body-18",
+				},
+				{
+					Id:     "17",
+					UserId: "user_id-17",
+					Title:  "title-17",
+					Body:   "body-17",
+				},
+				{
+					Id:     "16",
+					UserId: "user_id-16",
+					Title:  "title-16",
+					Body:   "body-16",
+				},
+			},
+		},
+		{
+			desc: "Test if correctly offset and sorting on multiple keys",
+			args: args{
+				offset: "2",
+				limit:  "3",
+			},
+			want: []entity.Article{
+				{
+					Id:     "16",
+					UserId: "user_id-16",
+					Title:  "title-16",
+					Body:   "body-16",
+				},
+				{
+					Id:     "15",
+					UserId: "user_id-15",
+					Title:  "title-15",
+					Body:   "body-15",
+				},
+				{
+					Id:     "14",
+					UserId: "user_id-14",
+					Title:  "title-14",
+					Body:   "body-14",
+				},
+			},
+		},
+		{
+			desc: "Test if correctly applies offset",
+			args: args{
+				offset: "2",
+				limit:  "1",
+			},
+			want: []entity.Article{
+				{
+					Id:     "16",
+					UserId: "user_id-16",
+					Title:  "title-16",
+					Body:   "body-16",
+				},
+			},
 		},
 	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			db := setUpDB()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+			defer cancel()
 
+			got, err := db.GetMultiple(ctx, tC.args.offset, tC.args.limit)
+			if err != nil {
+				t.Fatalf("db.GetMultiple() error = %+v\n", err)
+			}
+
+			if !cmp.Equal(got, tC.want) {
+				t.Fatalf("db.GetMultiple():\n got = %+v\n want = %+v\n", got, tC.want)
+			}
+		})
+	}
+}
+
+func TestGet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Get() integration test")
+	}
+
+	testCases := []struct {
+		desc    string
+		arg     string
+		want    entity.Article
+		wantErr bool
+	}{
+		{
+			desc: "Test if works on simple data",
+			arg:  "12",
+			want: entity.Article{
+				Id:     "12",
+				UserId: "user_id-12",
+				Title:  "title-12",
+				Body:   "body-12",
+			},
+		},
+		{
+			desc:    "Test if returns error on non-existent key",
+			arg:     gentest.RandomString(50),
+			wantErr: true,
+		},
+	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-
-			if err := db.Create(ctx, article); (err != nil) != tC.wantCreateErr {
-				t.Errorf("db.Create() err = %v", err)
-			}
-
-			got, err := db.Get(ctx, article.Id)
-			if (err != nil) != tC.wantGetErr {
-				t.Errorf("db.Get() err = %v", err)
+			db := setUpDB()
+			got, err := db.Get(ctx, tC.arg)
+			if (err != nil) != tC.wantErr {
+				t.Fatalf("db.Get():\n error = %+v wantErr = %+v\n", err, tC.wantErr)
 			}
 
 			if !cmp.Equal(got, tC.want) {
-				t.Errorf("Articles are not equal, got = %+v\n, want = %+v\n", got, tC.want)
+				t.Fatalf("db.Get():\n got = %+v\n want = %+v\n", got, tC.want)
+			}
+		})
+	}
+}
+func TestCreate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Create() integration test")
+	}
+
+	testCases := []struct {
+		desc    string
+		arg     entity.Article
+		wantErr bool
+	}{
+		{
+			desc: "Test if works on simple data",
+			arg: entity.Article{
+				Id:     "test",
+				UserId: "user_id-test",
+				Title:  "title-test",
+				Body:   "body-test",
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			db := setUpDB()
+			err := db.Create(ctx, tC.arg)
+			if (err != nil) != tC.wantErr {
+				t.Fatalf("db.Create() error = %+v", err)
 			}
 
-			if err := db.Delete(ctx, article.Id); (err != nil) != tC.wantDelErr {
-				t.Errorf("db.Delete() err = %v", err)
+			got, err := db.Get(ctx, tC.arg.Id)
+			if err != nil {
+				t.Fatalf("db.Create() failed to db.Get() article:\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
 			}
 
-			if _, err := db.Get(ctx, article.Id); err != nil && !errors.Is(err, redis.Nil) {
-				t.Fatalf("Failed to db.Get() after db.Del(), err = %v", err)
+			if !cmp.Equal(got, tC.arg) {
+				t.Fatalf("db.Create():\n got = %+v\n want = %+v\n", got, tC.arg)
+			}
+		})
+	}
+}
+func TestUpdate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Update() integration test")
+	}
+
+	testCases := []struct {
+		desc    string
+		arg     entity.Article
+		wantErr bool
+	}{
+		{
+			desc: "Test if works on simple data",
+			arg: entity.Article{
+				Id:     "test",
+				UserId: "user_id-test",
+				Title:  "title-test",
+				Body:   "body-test: " + gentest.RandomString(2),
+			},
+		},
+		{
+			desc: "Test if returns error on non-existent key",
+			arg: entity.Article{
+				Id:     "z" + gentest.RandomString(50),
+				UserId: "user_id-test",
+				Title:  "title-test",
+				Body:   "body-test: " + gentest.RandomString(2),
+			},
+			wantErr: true,
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			db := setUpDB()
+			err := db.Update(ctx, tC.arg)
+			if (err != nil) != tC.wantErr {
+				t.Fatalf("db.Update():\n error = %+v wantErr = %+v\n", err, tC.wantErr)
+			}
+
+			got, err := db.Get(ctx, tC.arg.Id)
+			if (err != nil) != tC.wantErr {
+				t.Fatalf("db.Update() failed to db.Get() article:\n error = %+v\n", err)
+			}
+
+			if !cmp.Equal(got, tC.arg) && !tC.wantErr {
+				t.Fatalf("db.Update():\n got = %+v\n want = %+v\n", got, tC.arg)
+			}
+		})
+	}
+}
+
+func TestDelete(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Delete() integration test")
+	}
+
+	testCases := []struct {
+		desc string
+		arg  string
+	}{
+		{
+			desc: "Test if works on simple data",
+			arg:  "test",
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			db := setUpDB()
+
+			err := db.Delete(ctx, tC.arg)
+			if err != nil {
+				t.Fatalf("db.Delete() error = %+v", err)
+			}
+
+			_, err = db.Get(ctx, tC.arg)
+			if err == nil {
+				t.Fatalf("db.Get() after db.Delete() returned nil error.")
 			}
 		})
 	}
