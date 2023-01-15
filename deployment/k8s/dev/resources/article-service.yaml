@@ -125,7 +125,7 @@ spec:
     # Locally in WSL it's /mnt/wsl
     # You should bind your project with k8s-mount for the time of development. Eg:
     #     mkdir /mnt/wsl/k8s-mount && sudo mount --bind your_project_dir /mnt/wsl/k8s-mount 
-    path: /run/desktop/mnt/host/wsl/k8s-mount
+    path: /run/desktop/mnt/host/wsl/k8s-mount/article
   persistentVolumeReclaimPolicy: Delete
   nodeAffinity:
     required:

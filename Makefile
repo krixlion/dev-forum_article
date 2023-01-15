@@ -38,7 +38,7 @@ docker-test-gen-coverage:
 # ------------- Kubernetes -------------
 
 k8s-mount-project:
-	mkdir /mnt/wsl/k8s-mount && sudo mount --bind . /mnt/wsl/k8s-mount
+	mkdir /mnt/wsl/k8s-mount && sudo mount --bind . /mnt/wsl/k8s-mount/article
 
 k8s-unit-test: # param: args
 	$(kubernetes) exec -it deploy/article-d -- go test -short -race ${args} ./...  
