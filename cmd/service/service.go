@@ -39,7 +39,7 @@ type Dependencies struct {
 }
 
 func NewArticleService(grpcPort int, d Dependencies) *ArticleService {
-	storage := storage.NewStorage(d.Cmd, d.Query, d.Logger)
+	storage := storage.NewCQRStorage(d.Cmd, d.Query, d.Logger)
 	dispatcher := event.MakeDispatcher(20)
 	dispatcher.Subscribe(event.HandlerFunc(storage.CatchUp), event.ArticleCreated, event.ArticleDeleted, event.ArticleUpdated)
 

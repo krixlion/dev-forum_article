@@ -11,7 +11,7 @@ mod-init:
 	go mod vendor
 
 run-local:
-	go run cmd/main.go
+	go run ./...
 
 build-local:
 	go build
@@ -38,7 +38,7 @@ docker-test-gen-coverage:
 # ------------- Kubernetes -------------
 
 k8s-mount-project:
-	mkdir /mnt/wsl/k8s-mount/${AGGREGATE_ID} && sudo mount --bind . /mnt/wsl/k8s-mount/${AGGREGATE_ID}
+	mkdir -p /mnt/wsl/k8s-mount/${AGGREGATE_ID} && sudo mount --bind . /mnt/wsl/k8s-mount/${AGGREGATE_ID}
 
 k8s-unit-test: # param: args
 	$(kubernetes) exec -it deploy/article-d -- go test -short -race ${args} ./...  
@@ -53,6 +53,9 @@ k8s-test-gen-coverage:
 k8s-run-dev:
 	- $(kubernetes) delete -R -f deployment/k8s/dev/resources/
 	$(kubernetes) apply -R -f deployment/k8s/dev/resources/
+
+k8s-stop-dev:
+	- $(kubernetes) delete -R -f deployment/k8s/dev/resources/
 
 k8s-setup-tools:
 	kubectl apply -f deployment/k8s/dev/dev-namespace.yml

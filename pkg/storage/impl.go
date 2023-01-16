@@ -21,7 +21,7 @@ type DB struct {
 	logger logging.Logger
 }
 
-func NewStorage(cmd Eventstore, query Storage, logger logging.Logger) CQRStorage {
+func NewCQRStorage(cmd Eventstore, query Storage, logger logging.Logger) CQRStorage {
 	return &DB{
 		cmd:    cmd,
 		query:  query,

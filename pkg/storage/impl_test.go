@@ -60,7 +60,7 @@ func Test_Get(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewStorage(mockCmd{}, tC.query, nulls.NullLogger{})
+			db := storage.NewCQRStorage(mockCmd{}, tC.query, nulls.NullLogger{})
 			got, err := db.Get(tC.args.ctx, tC.args.id)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.Get():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -121,7 +121,7 @@ func Test_GetMultiple(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewStorage(mockCmd{}, tC.query, nulls.NullLogger{})
+			db := storage.NewCQRStorage(mockCmd{}, tC.query, nulls.NullLogger{})
 			got, err := db.GetMultiple(tC.args.ctx, tC.args.offset, tC.args.limit)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.GetMultiple():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -178,7 +178,7 @@ func Test_Create(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
+			db := storage.NewCQRStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
 			err := db.Create(tC.args.ctx, tC.args.article)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.Create():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -229,7 +229,7 @@ func Test_Update(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
+			db := storage.NewCQRStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
 			err := db.Update(tC.args.ctx, tC.args.article)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.Update():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -280,7 +280,7 @@ func Test_Delete(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
+			db := storage.NewCQRStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
 			err := db.Delete(tC.args.ctx, tC.args.id)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.Delete():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -347,7 +347,7 @@ func Test_CatchUp(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewStorage(mockCmd{}, tC.query, nulls.NullLogger{})
+			db := storage.NewCQRStorage(mockCmd{}, tC.query, nulls.NullLogger{})
 			db.CatchUp(tC.arg)
 
 			switch tC.method {

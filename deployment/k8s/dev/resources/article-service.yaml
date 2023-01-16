@@ -87,13 +87,13 @@ spec:
       volumes: 
         - name: hot-reload
           persistentVolumeClaim:
-            claimName: hot-reload-pvc
+            claimName: hot-reload-pvc-article
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   namespace: dev
-  name: hot-reload-pvc
+  name: hot-reload-pvc-article
   labels:
     app: article
 spec:
@@ -108,7 +108,7 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   namespace: dev
-  name: hot-reload-pv
+  name: hot-reload-pv-article
   labels:
     app: article
 spec:
