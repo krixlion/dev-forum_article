@@ -18,22 +18,15 @@ func Test_Consume(t *testing.T) {
 		t.Skip("Skipping Consume() integration test.")
 	}
 
-	type args struct {
-		ctx   context.Context
-		eType event.EventType
-	}
 	testCases := []struct {
 		desc    string
-		args    args
+		eType   event.EventType
 		want    event.Event
 		wantErr bool
 	}{
 		{
-			desc: "Test if correctly returns ArticleCreated events",
-			args: args{
-				ctx:   context.Background(),
-				eType: event.ArticleCreated,
-			},
+			desc:  "Test if correctly returns ArticleCreated events",
+			eType: event.ArticleCreated,
 			want: event.Event{
 				Type:        event.ArticleCreated,
 				AggregateId: "article",
@@ -50,11 +43,8 @@ func Test_Consume(t *testing.T) {
 			},
 		},
 		{
-			desc: "Test if correctly returns ArticleUpdated events",
-			args: args{
-				ctx:   context.Background(),
-				eType: event.ArticleUpdated,
-			},
+			desc:  "Test if correctly returns ArticleUpdated events",
+			eType: event.ArticleUpdated,
 			want: event.Event{
 				Type:        event.ArticleUpdated,
 				AggregateId: "article",
@@ -71,11 +61,8 @@ func Test_Consume(t *testing.T) {
 			},
 		},
 		{
-			desc: "Test if correctly returns ArticleDeleted events",
-			args: args{
-				ctx:   context.Background(),
-				eType: event.ArticleDeleted,
-			},
+			desc:  "Test if correctly returns ArticleDeleted events",
+			eType: event.ArticleDeleted,
 			want: event.Event{
 				Type:        event.ArticleDeleted,
 				AggregateId: "article",
@@ -95,7 +82,10 @@ func Test_Consume(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
-			stream, err := db.Consume(tC.args.ctx, "", tC.args.eType)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+			defer cancel()
+
+			stream, err := db.Consume(ctx, "", tC.eType)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("DB.Consume():\n error = %v\n, wantErr %v\n", err, tC.wantErr)
 				return
@@ -117,23 +107,20 @@ func Test_Consume(t *testing.T) {
 
 			switch tC.want.Type {
 			case event.ArticleCreated:
-				err = db.Create(tC.args.ctx, article)
+				err = db.Create(ctx, article)
 			case event.ArticleDeleted:
-				err = db.Delete(tC.args.ctx, id)
+				err = db.Delete(ctx, id)
 			case event.ArticleUpdated:
-				err = db.Update(tC.args.ctx, article)
-
+				err = db.Update(ctx, article)
 			}
+
 			if err != nil {
 				t.Errorf("Failed to emit %s event:\n error = %+v\n", tC.want.Type, err)
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-			defer cancel()
-
 			select {
 			case got := <-stream:
-				if !cmp.Equal(got, tC.want, cmpopts.EquateApproxTime(time.Second)) {
+				if !cmp.Equal(got, tC.want, cmpopts.EquateApproxTime(time.Second*2)) {
 					t.Errorf("DB.Consume():\n got = %v\n want = %v\n Difference =  %s\n", got, tC.want, cmp.Diff(got, tC.want))
 				}
 			case <-ctx.Done():

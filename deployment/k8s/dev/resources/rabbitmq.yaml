@@ -33,6 +33,10 @@ spec:
         version: v0.1.0
         messageQueue: rabbitmq
     spec:
+      volumes:
+        - name: rabbitmq-config
+          configMap:
+            name: rabbitmq-config
       containers:
         - image: rabbitmq:3.11.3-alpine
           name: rabbitmq
@@ -49,6 +53,9 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/rabbitmq/
               name: rabbitmq-data
+            - mountPath: /etc/rabbitmq/enabled_plugins
+              subPath: enabled_plugins
+              name: rabbitmq-config
       restartPolicy: Always
 ---
 apiVersion: v1
@@ -65,9 +72,34 @@ spec:
     - name: amqp
       port: 5672
       targetPort: 5672
+  selector:
+    version: v0.1.0
+    messageQueue: rabbitmq
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: dev
+  name: rabbitmq-service-ui
+  labels:
+    version: v0.1.0
+    messageQueue: rabbitmq
+spec:
+  type: LoadBalancer
+  ports:
     - name: http
       port: 15672
       targetPort: 15672
   selector:
+    statefulset.kubernetes.io/pod-name: rabbitmq-cluster-0
     version: v0.1.0
     messageQueue: rabbitmq
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: rabbitmq-config
+    namespace: dev
+data:
+    enabled_plugins: |
+      [rabbitmq_prometheus,rabbitmq_web_dispatch,rabbitmq_management_agent,rabbitmq_management].

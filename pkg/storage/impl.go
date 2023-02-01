@@ -14,22 +14,22 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-// DB is a wrapper for the read model and write model to use with Storage interface.
-type DB struct {
+// Manager is a wrapper for the read model and write model to use with Storage interface.
+type Manager struct {
 	cmd    Eventstore
 	query  Storage
 	logger logging.Logger
 }
 
 func NewCQRStorage(cmd Eventstore, query Storage, logger logging.Logger) CQRStorage {
-	return &DB{
+	return &Manager{
 		cmd:    cmd,
 		query:  query,
 		logger: logger,
 	}
 }
 
-func (storage DB) Close() error {
+func (storage Manager) Close() error {
 	var errMsg string
 
 	if err := storage.cmd.Close(); err != nil {
@@ -47,7 +47,7 @@ func (storage DB) Close() error {
 	return nil
 }
 
-func (storage DB) Get(ctx context.Context, id string) (entity.Article, error) {
+func (storage Manager) Get(ctx context.Context, id string) (entity.Article, error) {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.Get")
 	defer span.End()
 
@@ -59,7 +59,7 @@ func (storage DB) Get(ctx context.Context, id string) (entity.Article, error) {
 	return article, nil
 }
 
-func (storage DB) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error) {
+func (storage Manager) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error) {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.GetMultiple")
 	defer span.End()
 
@@ -71,7 +71,11 @@ func (storage DB) GetMultiple(ctx context.Context, offset, limit string) ([]enti
 	return articles, nil
 }
 
-func (storage DB) Update(ctx context.Context, article entity.Article) error {
+func (storage Manager) GetBelongingIDs(ctx context.Context, userId string) ([]string, error) {
+	return storage.query.GetBelongingIDs(ctx, userId)
+}
+
+func (storage Manager) Update(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.Update")
 	defer span.End()
 
@@ -82,7 +86,7 @@ func (storage DB) Update(ctx context.Context, article entity.Article) error {
 	return nil
 }
 
-func (storage DB) Create(ctx context.Context, article entity.Article) error {
+func (storage Manager) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.Create")
 	defer span.End()
 
@@ -93,7 +97,7 @@ func (storage DB) Create(ctx context.Context, article entity.Article) error {
 	return nil
 }
 
-func (storage DB) Delete(ctx context.Context, id string) error {
+func (storage Manager) Delete(ctx context.Context, id string) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.Delete")
 	defer span.End()
 
@@ -105,7 +109,7 @@ func (storage DB) Delete(ctx context.Context, id string) error {
 }
 
 // CatchUp handles events required to keep the read model consistent.
-func (db DB) CatchUp(e event.Event) {
+func (db Manager) CatchUp(e event.Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 

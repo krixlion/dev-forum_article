@@ -3,6 +3,7 @@ package gentest
 import (
 	"encoding/json"
 	"math/rand"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
@@ -24,10 +25,12 @@ func RandomArticle(titleLen, bodyLen int) entity.Article {
 	userId := uuid.Must(uuid.NewV4())
 
 	return entity.Article{
-		Id:     id.String(),
-		UserId: userId.String(),
-		Title:  RandomString(titleLen),
-		Body:   RandomString(bodyLen),
+		Id:        id.String(),
+		UserId:    userId.String(),
+		Title:     RandomString(titleLen),
+		Body:      RandomString(bodyLen),
+		CreatedAt: time.Now().Add(time.Duration(rand.Intn(10))),
+		UpdatedAt: time.Now().Add(time.Duration(rand.Intn(10))),
 	}
 }
 

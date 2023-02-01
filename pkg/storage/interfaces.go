@@ -15,6 +15,11 @@ type CQRStorage interface {
 	CatchUp(event.Event)
 }
 
+type Eventstore interface {
+	event.Consumer
+	Writer
+}
+
 type Storage interface {
 	Getter
 	Writer
@@ -23,6 +28,8 @@ type Storage interface {
 type Getter interface {
 	io.Closer
 	Get(ctx context.Context, id string) (entity.Article, error)
+	// Get article ids belonging to a user.
+	GetBelongingIDs(ctx context.Context, userId string) ([]string, error)
 	GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error)
 }
 
@@ -31,9 +38,4 @@ type Writer interface {
 	Create(context.Context, entity.Article) error
 	Update(context.Context, entity.Article) error
 	Delete(ctx context.Context, id string) error
-}
-
-type Eventstore interface {
-	event.Consumer
-	Writer
 }

@@ -11,8 +11,6 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-const articlesPrefix = "articles"
-
 func (db DB) Close() error {
 	return db.redis.Close()
 }
@@ -21,17 +19,22 @@ func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Get")
 	defer span.End()
 
-	id = addArticlesPrefix(id)
-	article := entity.Article{}
+	id = addPrefix(articlesPrefix, id)
+	var data redisArticle
 
 	cmd := db.redis.HGetAll(ctx, id)
-	err := scan(cmd, &article)
+	err := scan(cmd, &data)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return entity.Article{}, err
 	}
 
-	return article, nil
+	v, err := data.Article()
+	if err != nil {
+		tracing.SetSpanErr(span, err)
+		return entity.Article{}, err
+	}
+	return v, nil
 }
 
 func (db DB) GetMultiple(ctx context.Context, offset, limit string) (articles []entity.Article, err error) {
@@ -56,7 +59,7 @@ func (db DB) GetMultiple(ctx context.Context, offset, limit string) (articles []
 	}
 
 	ids, err := db.redis.Sort(ctx, articlesPrefix, &redis.Sort{
-		By:     addArticlesPrefix("*->title"),
+		By:     addPrefix(articlesPrefix, "*->title"),
 		Offset: off,
 		Count:  count,
 		Alpha:  true,
@@ -71,15 +74,15 @@ func (db DB) GetMultiple(ctx context.Context, offset, limit string) (articles []
 	pipeline := db.redis.Pipeline()
 
 	for _, id := range ids {
-		id = addArticlesPrefix(id)
+		id = addPrefix(articlesPrefix, id)
 		commands = append(commands, pipeline.HGetAll(ctx, id))
 	}
 
 	pipeline.Exec(ctx)
 
 	for _, cmd := range commands {
-		article := entity.Article{}
-		err := scan(cmd, &article)
+		var data redisArticle
+		err := scan(cmd, &data)
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
 				continue
@@ -87,16 +90,37 @@ func (db DB) GetMultiple(ctx context.Context, offset, limit string) (articles []
 			tracing.SetSpanErr(span, err)
 			return nil, err
 		}
+
+		article, err := data.Article()
+		if err != nil {
+			return nil, err
+		}
 		articles = append(articles, article)
 	}
 	return articles, nil
+}
+
+func (db DB) GetBelongingIDs(ctx context.Context, userId string) ([]string, error) {
+	ids, err := db.redis.SMembers(ctx, addPrefix(usersPrefix, userId)).Result()
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 func (db DB) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Create")
 	defer span.End()
 
-	err := db.create(ctx, article)
+	prefixedArticleId := addPrefix(articlesPrefix, article.Id)
+
+	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		values := mapArticle(article)
+		db.redis.HSet(ctx, prefixedArticleId, values)
+		db.redis.SAdd(ctx, articlesPrefix, prefixedArticleId)
+		db.redis.SAdd(ctx, addPrefix(usersPrefix, article.UserId), article.Id)
+		return nil
+	})
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return err
@@ -109,7 +133,8 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Update")
 	defer span.End()
 
-	numOfKeys, err := db.redis.Exists(ctx, addArticlesPrefix(article.Id)).Result()
+	prefixedId := addPrefix(articlesPrefix, article.Id)
+	numOfKeys, err := db.redis.Exists(ctx, prefixedId).Result()
 	if err != nil {
 		return err
 	}
@@ -118,7 +143,11 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 		return redis.Nil
 	}
 
-	err = db.create(ctx, article)
+	_, err = db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		values := mapArticle(article)
+		db.redis.HSet(ctx, prefixedId, values)
+		return nil
+	})
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return err
@@ -131,23 +160,14 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	defer span.End()
 
 	_, err := db.redis.TxPipelined(ctx, func(p redis.Pipeliner) error {
-		id = addArticlesPrefix(id)
+		id = addPrefix(articlesPrefix, id)
 		db.redis.Del(ctx, id).Result()
 		return nil
 	})
+	if err != nil {
+		tracing.SetSpanErr(span, err)
+		return err
+	}
 
-	return err
-}
-
-func (db DB) create(ctx context.Context, article entity.Article) error {
-	prefixedId := addArticlesPrefix(article.Id)
-
-	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		values := mapArticle(article)
-		db.redis.HSet(ctx, prefixedId, values)
-		db.redis.SAdd(ctx, articlesPrefix, article.Id)
-		return nil
-	})
-
-	return err
+	return nil
 }

@@ -66,21 +66,63 @@ func Test_GetMultiple(t *testing.T) {
 			want: []entity.Article{
 				{
 					Id:     "18",
-					UserId: "user_id-18",
+					UserId: "18",
 					Title:  "title-18",
 					Body:   "body-18",
+					CreatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
+					UpdatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
 				},
 				{
 					Id:     "17",
-					UserId: "user_id-17",
+					UserId: "17",
 					Title:  "title-17",
 					Body:   "body-17",
+					CreatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
+					UpdatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
 				},
 				{
 					Id:     "16",
-					UserId: "user_id-16",
+					UserId: "16",
 					Title:  "title-16",
 					Body:   "body-16",
+					CreatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
+					UpdatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
 				},
 			},
 		},
@@ -93,21 +135,63 @@ func Test_GetMultiple(t *testing.T) {
 			want: []entity.Article{
 				{
 					Id:     "16",
-					UserId: "user_id-16",
+					UserId: "16",
 					Title:  "title-16",
 					Body:   "body-16",
+					CreatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
+					UpdatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
 				},
 				{
 					Id:     "15",
-					UserId: "user_id-15",
+					UserId: "15",
 					Title:  "title-15",
 					Body:   "body-15",
+					CreatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
+					UpdatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
 				},
 				{
 					Id:     "14",
-					UserId: "user_id-14",
+					UserId: "14",
 					Title:  "title-14",
 					Body:   "body-14",
+					CreatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
+					UpdatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
 				},
 			},
 		},
@@ -120,9 +204,23 @@ func Test_GetMultiple(t *testing.T) {
 			want: []entity.Article{
 				{
 					Id:     "16",
-					UserId: "user_id-16",
+					UserId: "16",
 					Title:  "title-16",
 					Body:   "body-16",
+					CreatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
+					UpdatedAt: func() time.Time {
+						time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+						if err != nil {
+							panic(err)
+						}
+						return time
+					}(),
 				},
 			},
 		},
@@ -153,7 +251,6 @@ func Test_Get(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping Get() integration test")
 	}
-
 	testCases := []struct {
 		desc    string
 		arg     string
@@ -165,9 +262,23 @@ func Test_Get(t *testing.T) {
 			arg:  "12",
 			want: entity.Article{
 				Id:     "12",
-				UserId: "user_id-12",
+				UserId: "12",
 				Title:  "title-12",
 				Body:   "body-12",
+				CreatedAt: func() time.Time {
+					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+					if err != nil {
+						panic(err)
+					}
+					return time
+				}(),
+				UpdatedAt: func() time.Time {
+					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+					if err != nil {
+						panic(err)
+					}
+					return time
+				}(),
 			},
 		},
 		{
@@ -197,6 +308,46 @@ func Test_Get(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetBelongingIDs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Create() integration test")
+	}
+
+	testCases := []struct {
+		name    string
+		userId  string
+		want    []string
+		wantErr bool
+	}{
+		// {
+		// 	name:   "",
+		// 	userId: "",
+		// 	want:   []string{},
+		// },
+	}
+	for _, tC := range testCases {
+		t.Run(tC.name, func(t *testing.T) {
+			db := setUpDB()
+			defer db.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			got, err := db.GetBelongingIDs(ctx, tC.userId)
+
+			if (err != nil) != tC.wantErr {
+				t.Errorf("db.GetBelongingIDs() error = %+v\n, wantErr %+v\n", err, tC.wantErr)
+				return
+			}
+			if !cmp.Equal(got, tC.want) {
+				t.Errorf("db.GetBelongingIDs() = %+v\n want %+v\n diff = %+v\n", got, tC.want, cmp.Diff(got, tC.want))
+				return
+			}
+		})
+	}
+}
+
 func Test_Create(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping Create() integration test")
@@ -211,9 +362,23 @@ func Test_Create(t *testing.T) {
 			desc: "Test if works on simple data",
 			arg: entity.Article{
 				Id:     "test",
-				UserId: "user_id-test",
+				UserId: "test",
 				Title:  "title-test",
 				Body:   "body-test",
+				CreatedAt: func() time.Time {
+					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+					if err != nil {
+						panic(err)
+					}
+					return time
+				}(),
+				UpdatedAt: func() time.Time {
+					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+					if err != nil {
+						panic(err)
+					}
+					return time
+				}(),
 			},
 		},
 	}
@@ -258,18 +423,46 @@ func Test_Update(t *testing.T) {
 			desc: "Test if works on simple data",
 			arg: entity.Article{
 				Id:     "test",
-				UserId: "user_id-test",
+				UserId: "test",
 				Title:  "title-test",
 				Body:   "body-test: " + gentest.RandomString(2),
+				CreatedAt: func() time.Time {
+					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+					if err != nil {
+						panic(err)
+					}
+					return time
+				}(),
+				UpdatedAt: func() time.Time {
+					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+					if err != nil {
+						panic(err)
+					}
+					return time
+				}(),
 			},
 		},
 		{
 			desc: "Test if returns error on non-existent key",
 			arg: entity.Article{
 				Id:     "z" + gentest.RandomString(50),
-				UserId: "user_id-test",
+				UserId: "test",
 				Title:  "title-test",
 				Body:   "body-test: " + gentest.RandomString(2),
+				CreatedAt: func() time.Time {
+					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+					if err != nil {
+						panic(err)
+					}
+					return time
+				}(),
+				UpdatedAt: func() time.Time {
+					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
+					if err != nil {
+						panic(err)
+					}
+					return time
+				}(),
 			},
 			wantErr: true,
 		},

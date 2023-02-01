@@ -15,7 +15,7 @@ import (
 // Consume listens for new article event streams with given type and sends them through returned channel.
 func (db DB) Consume(ctx context.Context, _ string, eType event.EventType) (<-chan event.Event, error) {
 	options := esdb.SubscribeToAllOptions{
-		From:           esdb.Start{},
+		From:           esdb.End{},
 		ResolveLinkTos: true,
 		Filter: &esdb.SubscriptionFilter{
 			Type:  esdb.EventFilterType,

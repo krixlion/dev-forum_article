@@ -1,28 +1,21 @@
-package event
+package dispatcher
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/krixlion/dev_forum-article/pkg/event"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/sync/errgroup"
 )
 
-type mockHandler struct {
-	*mock.Mock
-}
-
-func (h mockHandler) Handle(e Event) {
-	h.Called(e)
-}
-
-func containsHandler(handlers []Handler, target Handler) bool {
+func containsHandler(handlers []event.Handler, target event.Handler) bool {
 	for _, handler := range handlers {
 		if cmp.Equal(handler, target, cmpopts.IgnoreUnexported(mock.Mock{})) {
 			return true
@@ -34,23 +27,23 @@ func containsHandler(handlers []Handler, target Handler) bool {
 func Test_Subscribe(t *testing.T) {
 	testCases := []struct {
 		desc    string
-		handler Handler
-		eTypes  []EventType
+		handler event.Handler
+		eTypes  []event.EventType
 	}{
 		{
 			desc:    "Check if simple handler is subscribed succesfully",
-			handler: &mockHandler{},
-			eTypes:  []EventType{ArticleCreated, ArticleDeleted, UserCreated},
+			handler: &mocks.Handler{},
+			eTypes:  []event.EventType{event.ArticleCreated, event.ArticleDeleted, event.UserCreated},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			dispatcher := MakeDispatcher(10)
+			dispatcher := NewDispatcher(nil, 10)
 			dispatcher.Subscribe(tC.handler, tC.eTypes...)
 
 			for _, eType := range tC.eTypes {
 				if !containsHandler(dispatcher.handlers[eType], tC.handler) {
-					t.Errorf("Handler was not registered succesfully")
+					t.Errorf("event.Handler was not registered succesfully")
 				}
 			}
 		})
@@ -60,17 +53,17 @@ func Test_Subscribe(t *testing.T) {
 func Test_mergeChans(t *testing.T) {
 	testCases := []struct {
 		desc string
-		want []Event
+		want []event.Event
 	}{
 		{
 			desc: "Test if receives all events from multiple channels",
-			want: []Event{
+			want: []event.Event{
 				{
 					AggregateId: gentest.RandomString(5),
 				},
 				{
 					AggregateId: gentest.RandomString(5),
-					Type:        ArticleDeleted,
+					Type:        event.ArticleDeleted,
 				},
 			},
 		},
@@ -78,9 +71,9 @@ func Test_mergeChans(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 
-			chans := func() (chans []<-chan Event) {
+			chans := func() (chans []<-chan event.Event) {
 				for _, e := range tC.want {
-					v := make(chan Event, 1)
+					v := make(chan event.Event, 1)
 					v <- e
 					chans = append(chans, v)
 				}
@@ -88,7 +81,7 @@ func Test_mergeChans(t *testing.T) {
 			}()
 
 			out := mergeChans(chans...)
-			var got []Event
+			var got []event.Event
 			for i := 0; i < len(tC.want); i++ {
 				got = append(got, <-out)
 			}
@@ -101,28 +94,57 @@ func Test_mergeChans(t *testing.T) {
 	}
 }
 
-func Test_Dispatch(t *testing.T) {
+func Test_Publish(t *testing.T) {
 	testCases := []struct {
-		desc    string
-		arg     Event
-		handler mockHandler
+		desc   string
+		arg    event.Event
+		broker mocks.Broker
 	}{
 		{
-			desc: "Test if handler is called on simple random event",
-			arg: Event{
-				Type:        ArticleCreated,
-				AggregateId: "article",
-			},
-			handler: func() mockHandler {
-				m := mockHandler{new(mock.Mock)}
-				m.On("Handle", mock.AnythingOfType("Event")).Return().Times(1)
+			desc: "",
+			arg:  event.MakeEvent(event.ArticleDeleted, gentest.RandomString(5)),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			d := MakeDispatcher(2)
+			d := NewDispatcher(tC.broker, 2)
+			d.Publish(tC.arg)
+
+			tC.broker.AssertCalled(t, "ResilientPublish", tC.arg)
+			tC.broker.AssertExpectations(t)
+			tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
+		})
+	}
+}
+
+func Test_Dispatch(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		arg     event.Event
+		handler mocks.Handler
+		broker  mocks.Broker
+	}{
+		{
+			desc: "Test if handler is called on simple event",
+			arg: event.Event{
+				Type:        event.ArticleCreated,
+				AggregateId: "article",
+			},
+			handler: func() mocks.Handler {
+				m := mocks.Handler{Mock: new(mock.Mock)}
+				m.On("Handle", mock.AnythingOfType("Event")).Return().Once()
+				return m
+			}(),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			d := NewDispatcher(tC.broker, 2)
 			d.Subscribe(tC.handler, tC.arg.Type)
 			d.Dispatch(tC.arg)
 
@@ -140,20 +162,20 @@ func Test_Run(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		errg, ctx := errgroup.WithContext(ctx)
 
-		d := MakeDispatcher(20)
+		d := NewDispatcher(nil, 20)
 		errg.Go(func() error {
 			d.Run(ctx)
-			return ctx.Err()
+			return nil
 		})
 
 		before := time.Now()
 		cancel()
-		err := errg.Wait()
+		errg.Wait()
 		after := time.Now()
 		stopTime := after.Sub(before)
 
 		// If time needed for Run to return was longer than a millisecond or unexpected error was returned.
-		if !errors.Is(err, context.Canceled) || stopTime > time.Millisecond {
+		if stopTime > time.Millisecond {
 			t.Errorf("Run did not stop on context cancellation\n Time needed for func to return: %v", stopTime.Seconds())
 			return
 		}

@@ -1,6 +1,7 @@
 package event
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -13,6 +14,21 @@ type Event struct {
 }
 
 type EventType string
+
+// MakeEvent returns an event serialized for general use.
+// Panics when data cannot be marshaled into json.
+func MakeEvent(eType EventType, data interface{}) Event {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+	return Event{
+		AggregateId: "article",
+		Type:        eType,
+		Body:        jsonData,
+		Timestamp:   time.Now(),
+	}
+}
 
 // All event names must be lowercase and follow the structure: "noun-action".
 // Eg. article-created, notification-sent, order-accepted.

@@ -11,6 +11,7 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/entity"
 	"github.com/krixlion/dev_forum-article/pkg/event"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/mocks"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/nulls"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func Test_Get(t *testing.T) {
 
 	testCases := []struct {
 		desc    string
-		query   mockQuery
+		query   mocks.Query
 		args    args
 		want    entity.Article
 		wantErr bool
@@ -37,8 +38,8 @@ func Test_Get(t *testing.T) {
 				id:  "",
 			},
 			want: entity.Article{},
-			query: func() mockQuery {
-				m := mockQuery{new(mock.Mock)}
+			query: func() mocks.Query {
+				m := mocks.Query{Mock: new(mock.Mock)}
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, nil).Once()
 				return m
 			}(),
@@ -51,8 +52,8 @@ func Test_Get(t *testing.T) {
 			},
 			want:    entity.Article{},
 			wantErr: true,
-			query: func() mockQuery {
-				m := mockQuery{new(mock.Mock)}
+			query: func() mocks.Query {
+				m := mocks.Query{Mock: new(mock.Mock)}
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, errors.New("test err")).Once()
 				return m
 			}(),
@@ -60,7 +61,7 @@ func Test_Get(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewCQRStorage(mockCmd{}, tC.query, nulls.NullLogger{})
+			db := storage.NewCQRStorage(mocks.Cmd{}, tC.query, nulls.NullLogger{})
 			got, err := db.Get(tC.args.ctx, tC.args.id)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.Get():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -84,7 +85,7 @@ func Test_GetMultiple(t *testing.T) {
 
 	testCases := []struct {
 		desc    string
-		query   mockQuery
+		query   mocks.Query
 		args    args
 		want    []entity.Article
 		wantErr bool
@@ -97,8 +98,8 @@ func Test_GetMultiple(t *testing.T) {
 				offset: "",
 			},
 			want: []entity.Article{},
-			query: func() mockQuery {
-				m := mockQuery{new(mock.Mock)}
+			query: func() mocks.Query {
+				m := mocks.Query{Mock: new(mock.Mock)}
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return([]entity.Article{}, nil).Once()
 				return m
 			}(),
@@ -112,8 +113,8 @@ func Test_GetMultiple(t *testing.T) {
 			},
 			want:    []entity.Article{},
 			wantErr: true,
-			query: func() mockQuery {
-				m := mockQuery{new(mock.Mock)}
+			query: func() mocks.Query {
+				m := mocks.Query{Mock: new(mock.Mock)}
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return([]entity.Article{}, errors.New("test err")).Once()
 				return m
 			}(),
@@ -121,7 +122,7 @@ func Test_GetMultiple(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewCQRStorage(mockCmd{}, tC.query, nulls.NullLogger{})
+			db := storage.NewCQRStorage(mocks.Cmd{}, tC.query, nulls.NullLogger{})
 			got, err := db.GetMultiple(tC.args.ctx, tC.args.offset, tC.args.limit)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.GetMultiple():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -145,7 +146,7 @@ func Test_Create(t *testing.T) {
 
 	testCases := []struct {
 		desc    string
-		cmd     mockCmd
+		cmd     mocks.Cmd
 		args    args
 		wantErr bool
 	}{
@@ -156,8 +157,8 @@ func Test_Create(t *testing.T) {
 				article: entity.Article{},
 			},
 
-			cmd: func() mockCmd {
-				m := mockCmd{new(mock.Mock)}
+			cmd: func() mocks.Cmd {
+				m := mocks.Cmd{Mock: new(mock.Mock)}
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
 				return m
 			}(),
@@ -169,8 +170,8 @@ func Test_Create(t *testing.T) {
 				article: entity.Article{},
 			},
 			wantErr: true,
-			cmd: func() mockCmd {
-				m := mockCmd{new(mock.Mock)}
+			cmd: func() mocks.Cmd {
+				m := mocks.Cmd{Mock: new(mock.Mock)}
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Once()
 				return m
 			}(),
@@ -178,7 +179,7 @@ func Test_Create(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewCQRStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
+			db := storage.NewCQRStorage(tC.cmd, mocks.Query{}, nulls.NullLogger{})
 			err := db.Create(tC.args.ctx, tC.args.article)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.Create():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -196,7 +197,7 @@ func Test_Update(t *testing.T) {
 
 	testCases := []struct {
 		desc    string
-		cmd     mockCmd
+		cmd     mocks.Cmd
 		args    args
 		wantErr bool
 	}{
@@ -207,8 +208,8 @@ func Test_Update(t *testing.T) {
 				article: entity.Article{},
 			},
 
-			cmd: func() mockCmd {
-				m := mockCmd{new(mock.Mock)}
+			cmd: func() mocks.Cmd {
+				m := mocks.Cmd{Mock: new(mock.Mock)}
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
 				return m
 			}(),
@@ -220,8 +221,8 @@ func Test_Update(t *testing.T) {
 				article: entity.Article{},
 			},
 			wantErr: true,
-			cmd: func() mockCmd {
-				m := mockCmd{new(mock.Mock)}
+			cmd: func() mocks.Cmd {
+				m := mocks.Cmd{Mock: new(mock.Mock)}
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Once()
 				return m
 			}(),
@@ -229,7 +230,7 @@ func Test_Update(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewCQRStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
+			db := storage.NewCQRStorage(tC.cmd, mocks.Query{}, nulls.NullLogger{})
 			err := db.Update(tC.args.ctx, tC.args.article)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.Update():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -247,7 +248,7 @@ func Test_Delete(t *testing.T) {
 
 	testCases := []struct {
 		desc    string
-		cmd     mockCmd
+		cmd     mocks.Cmd
 		args    args
 		wantErr bool
 	}{
@@ -258,8 +259,8 @@ func Test_Delete(t *testing.T) {
 				id:  "",
 			},
 
-			cmd: func() mockCmd {
-				m := mockCmd{new(mock.Mock)}
+			cmd: func() mocks.Cmd {
+				m := mocks.Cmd{Mock: new(mock.Mock)}
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(nil).Once()
 				return m
 			}(),
@@ -271,8 +272,8 @@ func Test_Delete(t *testing.T) {
 				id:  "",
 			},
 			wantErr: true,
-			cmd: func() mockCmd {
-				m := mockCmd{new(mock.Mock)}
+			cmd: func() mocks.Cmd {
+				m := mocks.Cmd{Mock: new(mock.Mock)}
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(errors.New("test err")).Once()
 				return m
 			}(),
@@ -280,7 +281,7 @@ func Test_Delete(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewCQRStorage(tC.cmd, mockQuery{}, nulls.NullLogger{})
+			db := storage.NewCQRStorage(tC.cmd, mocks.Query{}, nulls.NullLogger{})
 			err := db.Delete(tC.args.ctx, tC.args.id)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("storage.Delete():\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
@@ -296,7 +297,7 @@ func Test_CatchUp(t *testing.T) {
 	testCases := []struct {
 		desc   string
 		arg    event.Event
-		query  mockQuery
+		query  mocks.Query
 		method string
 	}{
 		{
@@ -306,8 +307,8 @@ func Test_CatchUp(t *testing.T) {
 				Body: gentest.RandomJSONArticle(2, 3),
 			},
 			method: "Update",
-			query: func() mockQuery {
-				m := mockQuery{new(mock.Mock)}
+			query: func() mocks.Query {
+				m := mocks.Query{Mock: new(mock.Mock)}
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
 				return m
 			}(),
@@ -319,8 +320,8 @@ func Test_CatchUp(t *testing.T) {
 				Body: gentest.RandomJSONArticle(2, 3),
 			},
 			method: "Create",
-			query: func() mockQuery {
-				m := mockQuery{new(mock.Mock)}
+			query: func() mocks.Query {
+				m := mocks.Query{Mock: new(mock.Mock)}
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
 				return m
 			}(),
@@ -338,8 +339,8 @@ func Test_CatchUp(t *testing.T) {
 				}(),
 			},
 			method: "Delete",
-			query: func() mockQuery {
-				m := mockQuery{new(mock.Mock)}
+			query: func() mocks.Query {
+				m := mocks.Query{Mock: new(mock.Mock)}
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(nil).Once()
 				return m
 			}(),
@@ -347,7 +348,7 @@ func Test_CatchUp(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			db := storage.NewCQRStorage(mockCmd{}, tC.query, nulls.NullLogger{})
+			db := storage.NewCQRStorage(mocks.Cmd{}, tC.query, nulls.NullLogger{})
 			db.CatchUp(tC.arg)
 
 			switch tC.method {

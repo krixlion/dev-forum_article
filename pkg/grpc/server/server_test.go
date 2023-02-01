@@ -15,20 +15,22 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/event/dispatcher"
+	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
-	"github.com/krixlion/dev_forum-article/pkg/net/grpc/server"
-	"github.com/krixlion/dev_forum-article/pkg/storage"
+	"github.com/krixlion/dev_forum-article/pkg/helpers/mocks"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // setUpServer initializes and runs in the background a gRPC
 // server allowing only for local calls for testing.
 // Returns a client to interact with the server.
 // The server is shutdown when ctx.Done() receives.
-func setUpServer(ctx context.Context, mock storage.CQRStorage) pb.ArticleServiceClient {
+func setUpServer(ctx context.Context, storage mocks.CQRStorage, broker mocks.Broker) pb.ArticleServiceClient {
 	// bufconn allows the server to call itself
 	// great for testing across whole infrastructure
 	lis := bufconn.Listen(1024 * 1024)
@@ -38,7 +40,8 @@ func setUpServer(ctx context.Context, mock storage.CQRStorage) pb.ArticleService
 
 	s := grpc.NewServer()
 	server := server.ArticleServer{
-		Storage: mock,
+		Storage:    storage,
+		Dispatcher: dispatcher.NewDispatcher(broker, 2),
 	}
 	pb.RegisterArticleServiceServer(s, server)
 	go func() {
@@ -64,18 +67,21 @@ func setUpServer(ctx context.Context, mock storage.CQRStorage) pb.ArticleService
 func Test_Get(t *testing.T) {
 	v := gentest.RandomArticle(2, 5)
 	article := &pb.Article{
-		Id:     v.Id,
-		UserId: v.UserId,
-		Title:  v.Title,
-		Body:   v.Body,
+		Id:        v.Id,
+		UserId:    v.UserId,
+		Title:     v.Title,
+		Body:      v.Body,
+		CreatedAt: timestamppb.New(v.CreatedAt),
+		UpdatedAt: timestamppb.New(v.UpdatedAt),
 	}
 
 	testCases := []struct {
+		broker  mocks.Broker
 		desc    string
 		arg     *pb.GetArticleRequest
 		want    *pb.GetArticleResponse
 		wantErr bool
-		storage storage.CQRStorage
+		storage mocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -85,9 +91,15 @@ func Test_Get(t *testing.T) {
 			want: &pb.GetArticleResponse{
 				Article: article,
 			},
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(v, nil).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 		{
@@ -97,9 +109,15 @@ func Test_Get(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, errors.New("test err")).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 	}
@@ -108,22 +126,23 @@ func Test_Get(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
 
-			client := setUpServer(ctx, tC.storage)
+			client := setUpServer(ctx, tC.storage, tC.broker)
 
 			ctx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
 
-			getResponse, err := client.Get(ctx, tC.arg)
+			got, err := client.Get(ctx, tC.arg)
 			if (err != nil) != tC.wantErr {
 				t.Errorf("Failed to Get article, err: %v", err)
 				return
 			}
 
+			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
-			if getResponse != tC.want {
-				if !cmp.Equal(getResponse.Article, tC.want.Article, cmpopts.IgnoreUnexported(pb.Article{})) {
-					t.Errorf("Articles are not equal:\n Got = %+v\n, want = %+v\n", getResponse.Article, tC.want.Article)
+			if got != tC.want {
+				if !cmp.Equal(got.Article, tC.want.Article, cmpopts.IgnoreUnexported(pb.Article{}, timestamppb.Timestamp{})) {
+					t.Errorf("Articles are not equal:\n Got = %+v\n, want = %+v\n", got.Article, tC.want.Article)
 					return
 				}
 			}
@@ -141,11 +160,12 @@ func Test_Create(t *testing.T) {
 	}
 
 	testCases := []struct {
+		broker   mocks.Broker
 		desc     string
 		arg      *pb.CreateArticleRequest
 		dontWant *pb.CreateArticleResponse
 		wantErr  bool
-		storage  storage.CQRStorage
+		storage  mocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -155,9 +175,15 @@ func Test_Create(t *testing.T) {
 			dontWant: &pb.CreateArticleResponse{
 				Id: article.Id,
 			},
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 		{
@@ -167,9 +193,15 @@ func Test_Create(t *testing.T) {
 			},
 			dontWant: nil,
 			wantErr:  true,
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 	}
@@ -177,23 +209,31 @@ func Test_Create(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tC.storage)
+			client := setUpServer(ctx, tC.storage, tC.broker)
 
-			createResponse, err := client.Create(ctx, tC.arg)
-			if (err != nil) != tC.wantErr {
-				t.Errorf("Failed to Get article, err: %v", err)
-				return
-			}
+			got, err := client.Create(ctx, tC.arg)
+			if err != nil {
+				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
 
-			// Equals false if both are nil or they point to the same memory address
-			// so be sure to use seperate structs when providing args in order to prevent SEGV.
-			if createResponse != tC.dontWant {
-				if cmp.Equal(createResponse.Id, tC.dontWant.Id) {
-					t.Errorf("Article IDs was not reassigned:\n Got = %+v\n want = %+v\n", createResponse.Id, tC.dontWant.Id)
+				if !tC.wantErr {
+					t.Errorf("Failed to Create article, err: %v", err)
 					return
 				}
-				if _, err := uuid.FromString(createResponse.Id); err != nil {
-					t.Errorf("Article ID is not correct UUID:\n ID = %+v\n err = %+v", createResponse.Id, err)
+			} else {
+				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
+			}
+			tC.storage.AssertNumberOfCalls(t, "Create", 1)
+
+			// Compare in order to avoid nil pointer dereference.
+			// Equals false if both are nil or they point to the same memory address
+			// so be sure to use seperate structs when providing args in order to prevent SEGV.
+			if got != tC.dontWant {
+				if cmp.Equal(got.Id, tC.dontWant.Id) {
+					t.Errorf("Article IDs was not reassigned:\n Got = %+v\n want = %+v\n", got.Id, tC.dontWant.Id)
+					return
+				}
+				if _, err := uuid.FromString(got.Id); err != nil {
+					t.Errorf("Article ID is not correct UUID:\n ID = %+v\n err = %+v", got.Id, err)
 					return
 				}
 			}
@@ -211,11 +251,12 @@ func Test_Update(t *testing.T) {
 	}
 
 	testCases := []struct {
+		broker  mocks.Broker
 		desc    string
 		arg     *pb.UpdateArticleRequest
 		want    *pb.UpdateArticleResponse
 		wantErr bool
-		storage storage.CQRStorage
+		storage mocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -223,9 +264,15 @@ func Test_Update(t *testing.T) {
 				Article: article,
 			},
 			want: &pb.UpdateArticleResponse{},
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 		{
@@ -235,9 +282,15 @@ func Test_Update(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 	}
@@ -245,14 +298,22 @@ func Test_Update(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tC.storage)
+			client := setUpServer(ctx, tC.storage, tC.broker)
 
 			got, err := client.Update(ctx, tC.arg)
-			if (err != nil) != tC.wantErr {
-				t.Errorf("Failed to Update article, err: %v", err)
-				return
-			}
+			if err != nil {
+				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
 
+				if !tC.wantErr {
+					t.Errorf("Failed to Update article, err: %v", err)
+					return
+				}
+			} else {
+				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
+			}
+			tC.storage.AssertNumberOfCalls(t, "Update", 1)
+
+			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if got != tC.want {
@@ -275,11 +336,12 @@ func Test_Delete(t *testing.T) {
 	}
 
 	testCases := []struct {
+		broker  mocks.Broker
 		desc    string
 		arg     *pb.DeleteArticleRequest
 		want    *pb.DeleteArticleResponse
 		wantErr bool
-		storage storage.CQRStorage
+		storage mocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -287,9 +349,15 @@ func Test_Delete(t *testing.T) {
 				Id: article.Id,
 			},
 			want: &pb.DeleteArticleResponse{},
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(nil).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 		{
@@ -299,9 +367,15 @@ func Test_Delete(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(errors.New("test err")).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 	}
@@ -309,14 +383,22 @@ func Test_Delete(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tC.storage)
+			client := setUpServer(ctx, tC.storage, tC.broker)
 
 			got, err := client.Delete(ctx, tC.arg)
-			if (err != nil) != tC.wantErr {
-				t.Errorf("Failed to Delete article, err: %v", err)
-				return
-			}
+			if err != nil {
+				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
 
+				if !tC.wantErr {
+					t.Errorf("Failed to Delete article, err: %v", err)
+					return
+				}
+			} else {
+				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
+			}
+			tC.storage.AssertNumberOfCalls(t, "Delete", 1)
+
+			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if got != tC.want {
@@ -339,20 +421,23 @@ func Test_GetStream(t *testing.T) {
 	var pbArticles []*pb.Article
 	for _, v := range articles {
 		pbArticle := &pb.Article{
-			Id:     v.Id,
-			UserId: v.UserId,
-			Title:  v.Title,
-			Body:   v.Body,
+			Id:        v.Id,
+			UserId:    v.UserId,
+			Title:     v.Title,
+			Body:      v.Body,
+			CreatedAt: timestamppb.New(v.CreatedAt),
+			UpdatedAt: timestamppb.New(v.UpdatedAt),
 		}
 		pbArticles = append(pbArticles, pbArticle)
 	}
 
 	testCases := []struct {
+		broker  mocks.Broker
 		desc    string
 		arg     *pb.GetArticlesRequest
 		want    []*pb.Article
 		wantErr bool
-		storage storage.CQRStorage
+		storage mocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -361,9 +446,15 @@ func Test_GetStream(t *testing.T) {
 				Limit:  "5",
 			},
 			want: pbArticles,
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(articles, nil).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 		{
@@ -371,9 +462,15 @@ func Test_GetStream(t *testing.T) {
 			arg:     &pb.GetArticlesRequest{},
 			want:    nil,
 			wantErr: true,
-			storage: func() (m mockStorage) {
+			storage: func() mocks.CQRStorage {
+				m := mocks.CQRStorage{Mock: new(mock.Mock)}
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return([]entity.Article{}, errors.New("test err")).Times(1)
-				return
+				return m
+			}(),
+			broker: func() mocks.Broker {
+				m := mocks.Broker{Mock: new(mock.Mock)}
+				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
+				return m
 			}(),
 		},
 	}
@@ -381,7 +478,7 @@ func Test_GetStream(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tC.storage)
+			client := setUpServer(ctx, tC.storage, tC.broker)
 
 			stream, err := client.GetStream(ctx, tC.arg)
 			if err != nil {
@@ -399,7 +496,7 @@ func Test_GetStream(t *testing.T) {
 				got = append(got, article)
 			}
 
-			if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.Article{})) {
+			if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.Article{}, timestamppb.Timestamp{})) {
 				t.Errorf("Articles are not equal:\n Got = %+v\n want = %+v\n", got, tC.want)
 				return
 			}

@@ -6,8 +6,9 @@ import (
 	"net"
 
 	"github.com/krixlion/dev_forum-article/pkg/event"
+	"github.com/krixlion/dev_forum-article/pkg/event/dispatcher"
+	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	"github.com/krixlion/dev_forum-article/pkg/logging"
-	"github.com/krixlion/dev_forum-article/pkg/net/grpc/server"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-proto/article_service/pb"
 
@@ -25,9 +26,8 @@ type ArticleService struct {
 	// Consumer for events used to update and sync the read model.
 	syncEventSource event.Consumer
 	broker          event.Broker
-	dispatcher      *event.Dispatcher
-
-	logger logging.Logger
+	dispatcher      *dispatcher.Dispatcher
+	logger          logging.Logger
 }
 
 type Dependencies struct {
@@ -36,20 +36,18 @@ type Dependencies struct {
 	Logger     logging.Logger
 	Broker     event.Broker
 	SyncEvents event.Consumer
+	Storage    storage.CQRStorage
+	Dispatcher *dispatcher.Dispatcher
 }
 
 func NewArticleService(grpcPort int, d Dependencies) *ArticleService {
-	storage := storage.NewCQRStorage(d.Cmd, d.Query, d.Logger)
-	dispatcher := event.MakeDispatcher(20)
-	dispatcher.Subscribe(event.HandlerFunc(storage.CatchUp), event.ArticleCreated, event.ArticleDeleted, event.ArticleUpdated)
-
 	srv := server.ArticleServer{
-		Storage: storage,
-		Logger:  d.Logger,
+		Storage:    d.Storage,
+		Logger:     d.Logger,
+		Dispatcher: d.Dispatcher,
 	}
 
 	baseSrv := grpc.NewServer(
-		// grpc.UnaryInterceptor(srv.Interceptor),
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
 	)
@@ -58,7 +56,7 @@ func NewArticleService(grpcPort int, d Dependencies) *ArticleService {
 		grpcPort:        grpcPort,
 		grpcSrv:         baseSrv,
 		srv:             srv,
-		dispatcher:      &dispatcher,
+		dispatcher:      d.Dispatcher,
 		broker:          d.Broker,
 		syncEventSource: d.SyncEvents,
 		logger:          d.Logger,
@@ -79,7 +77,8 @@ func (s *ArticleService) Run(ctx context.Context) {
 	}
 
 	go func() {
-		s.dispatcher.AddEventSources(s.syncEventSources(ctx)...)
+		s.dispatcher.AddEventProviders(s.eventProviders(ctx)...)
+		s.dispatcher.AddSyncEventProviders(s.syncEventProviders(ctx)...)
 		s.dispatcher.Run(ctx)
 	}()
 
@@ -95,7 +94,7 @@ func (s *ArticleService) Close() error {
 	return s.srv.Close()
 }
 
-func (s *ArticleService) syncEventSources(ctx context.Context) (chans []<-chan event.Event) {
+func (s *ArticleService) syncEventProviders(ctx context.Context) (chans []<-chan event.Event) {
 
 	aCreated, err := s.syncEventSource.Consume(ctx, "", event.ArticleCreated)
 	if err != nil {
@@ -113,4 +112,13 @@ func (s *ArticleService) syncEventSources(ctx context.Context) (chans []<-chan e
 	}
 
 	return append(chans, aCreated, aDeleted, aUpdated)
+}
+
+func (s *ArticleService) eventProviders(ctx context.Context) (chans []<-chan event.Event) {
+	uDeleted, err := s.broker.Consume(ctx, "deleteArticlesAfterUserDeleted", event.UserDeleted)
+	if err != nil {
+		panic(err)
+	}
+
+	return append(chans, uDeleted)
 }

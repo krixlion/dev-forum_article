@@ -1,13 +1,15 @@
-package entity_test
+package server
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"github.com/krixlion/dev_forum-proto/article_service/pb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func Test_ArticleFromPB(t *testing.T) {
@@ -24,23 +26,27 @@ func Test_ArticleFromPB(t *testing.T) {
 		{
 			desc: "Test if works on simple random data",
 			arg: &pb.Article{
-				Id:     id,
-				UserId: userId,
-				Title:  title,
-				Body:   body,
+				Id:        id,
+				UserId:    userId,
+				Title:     title,
+				Body:      body,
+				CreatedAt: timestamppb.New(time.Time{}),
+				UpdatedAt: timestamppb.New(time.Time{}),
 			},
 			want: entity.Article{
-				Id:     id,
-				UserId: userId,
-				Title:  title,
-				Body:   body,
+				Id:        id,
+				UserId:    userId,
+				Title:     title,
+				Body:      body,
+				CreatedAt: time.Time{},
+				UpdatedAt: time.Time{},
 			},
 		},
 	}
 
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			got := entity.ArticleFromPB(tC.arg)
+			got := articleFromPB(tC.arg)
 
 			if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.Article{})) {
 				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n", got, tC.want)

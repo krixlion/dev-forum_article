@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/krixlion/dev_forum-article/pkg/entity"
 	"github.com/krixlion/dev_forum-article/pkg/event"
@@ -22,19 +21,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Create")
 	defer span.End()
 
-	jsonArticle, err := json.Marshal(article)
-	if err != nil {
-		tracing.SetSpanErr(span, err)
-		return err
-	}
-
-	e := event.Event{
-		AggregateId: "article",
-		Type:        event.ArticleCreated,
-		Body:        jsonArticle,
-		Timestamp:   time.Now(),
-	}
-
+	e := event.MakeEvent(event.ArticleCreated, article)
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
@@ -61,18 +48,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Update")
 	defer span.End()
 
-	jsonArticle, err := json.Marshal(article)
-	if err != nil {
-		return err
-	}
-
-	e := event.Event{
-		AggregateId: "article",
-		Type:        event.ArticleUpdated,
-		Body:        jsonArticle,
-		Timestamp:   time.Now(),
-	}
-
+	e := event.MakeEvent(event.ArticleUpdated, article)
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
@@ -108,19 +84,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Delete")
 	defer span.End()
 
-	jsonID, err := json.Marshal(id)
-	if err != nil {
-		tracing.SetSpanErr(span, err)
-		return err
-	}
-
-	e := event.Event{
-		AggregateId: "article",
-		Type:        event.ArticleDeleted,
-		Body:        jsonID,
-		Timestamp:   time.Now(),
-	}
-
+	e := event.MakeEvent(event.ArticleDeleted, id)
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)

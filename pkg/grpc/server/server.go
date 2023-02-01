@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-article/pkg/event"
+	"github.com/krixlion/dev_forum-article/pkg/event/dispatcher"
 	"github.com/krixlion/dev_forum-article/pkg/logging"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-proto/article_service/pb"
@@ -14,12 +15,14 @@ import (
 	"github.com/gofrs/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	Storage storage.CQRStorage
-	Logger  logging.Logger
+	Storage    storage.CQRStorage
+	Logger     logging.Logger
+	Dispatcher *dispatcher.Dispatcher
 }
 
 func (s ArticleServer) Close() error {
@@ -38,7 +41,7 @@ func (s ArticleServer) Close() error {
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
-	article := entity.ArticleFromPB(req.GetArticle())
+	article := articleFromPB(req.GetArticle())
 	id, err := uuid.NewV4()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -50,6 +53,8 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
+	s.Dispatcher.Publish(event.MakeEvent(event.ArticleCreated, article))
+
 	return &pb.CreateArticleResponse{
 		Id: id.String(),
 	}, nil
@@ -59,9 +64,13 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	if err := s.Storage.Delete(ctx, req.GetId()); err != nil {
+	id := req.GetId()
+
+	if err := s.Storage.Delete(ctx, id); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
+
+	s.Dispatcher.Publish(event.MakeEvent(event.ArticleDeleted, id))
 
 	return &pb.DeleteArticleResponse{}, nil
 }
@@ -70,11 +79,13 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	article := entity.ArticleFromPB(req.GetArticle())
+	article := articleFromPB(req.GetArticle())
 
 	if err := s.Storage.Update(ctx, article); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
+
+	s.Dispatcher.Publish(event.MakeEvent(event.ArticleUpdated, article))
 
 	return &pb.UpdateArticleResponse{}, nil
 }
@@ -90,10 +101,12 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 
 	return &pb.GetArticleResponse{
 		Article: &pb.Article{
-			Id:     article.Id,
-			UserId: article.UserId,
-			Title:  article.Title,
-			Body:   article.Body,
+			Id:        article.Id,
+			UserId:    article.UserId,
+			Title:     article.Title,
+			Body:      article.Body,
+			CreatedAt: timestamppb.New(article.CreatedAt),
+			UpdatedAt: timestamppb.New(article.UpdatedAt),
 		},
 	}, err
 }
@@ -113,10 +126,12 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 			return nil
 		default:
 			article := pb.Article{
-				Id:     v.Id,
-				UserId: v.UserId,
-				Title:  v.Title,
-				Body:   v.Body,
+				Id:        v.Id,
+				UserId:    v.UserId,
+				Title:     v.Title,
+				Body:      v.Body,
+				CreatedAt: timestamppb.New(v.CreatedAt),
+				UpdatedAt: timestamppb.New(v.UpdatedAt),
 			}
 
 			err := stream.Send(&article)
@@ -127,11 +142,3 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 	}
 	return nil
 }
-
-// func (s ArticleServer) Interceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-// 	if info.FullMethod != "/proto.ArticleService/Get" {
-// 		return handler(ctx, req)
-// 	}
-// 	// metadata.FromIncomingContext(ctx)
-// 	return nil, nil
-// }

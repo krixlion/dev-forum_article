@@ -8,6 +8,11 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/logging"
 )
 
+const (
+	articlesPrefix = "articles"
+	usersPrefix    = "users"
+)
+
 type DB struct {
 	redis  *redis.Client
 	logger logging.Logger
