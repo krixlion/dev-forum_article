@@ -6,11 +6,10 @@ import (
 	"fmt"
 
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/event"
-	"github.com/krixlion/dev_forum-article/pkg/tracing"
+	"github.com/krixlion/dev_forum-lib/event"
+	"github.com/krixlion/dev_forum-lib/tracing"
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
-	"go.opentelemetry.io/otel"
 )
 
 func addArticlesPrefix(v string) string {
@@ -18,7 +17,7 @@ func addArticlesPrefix(v string) string {
 }
 
 func (db DB) Create(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Create")
+	ctx, span := db.tracer.Start(ctx, "esdb.Create")
 	defer span.End()
 
 	e := event.MakeEvent(event.ArticleCreated, article)
@@ -45,7 +44,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 }
 
 func (db DB) Update(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Update")
+	ctx, span := db.tracer.Start(ctx, "esdb.Update")
 	defer span.End()
 
 	e := event.MakeEvent(event.ArticleUpdated, article)
@@ -81,7 +80,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 }
 
 func (db DB) Delete(ctx context.Context, id string) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Delete")
+	ctx, span := db.tracer.Start(ctx, "esdb.Delete")
 	defer span.End()
 
 	e := event.MakeEvent(event.ArticleDeleted, id)
@@ -109,7 +108,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 }
 
 func (db DB) lastRevision(ctx context.Context, articleId string) (*esdb.ResolvedEvent, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.lastRevision")
+	ctx, span := db.tracer.Start(ctx, "esdb.lastRevision")
 	defer span.End()
 
 	readOpts := esdb.ReadStreamOptions{

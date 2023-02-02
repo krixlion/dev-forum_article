@@ -3,17 +3,25 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"time"
 
-	"github.com/krixlion/dev_forum-article/pkg/event"
+	"github.com/krixlion/dev_forum-lib/event"
 )
 
-func (db Manager) DeleteUsersArticles(e event.Event) event.HandlerFunc {
+func (db Manager) EventHandlers() map[event.EventType][]event.Handler {
+	return map[event.EventType][]event.Handler{
+		event.ArticleCreated: {
+			db.DeleteUsersArticles(),
+		},
+	}
+}
+
+func (db Manager) DeleteUsersArticles() event.HandlerFunc {
 	return func(e event.Event) {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
 		var userId string
-
 		if err := json.Unmarshal(e.Body, &userId); err != nil {
 			db.logger.Log(ctx, "Failed to unmarshal event body", "err", err, "event", e)
 			return

@@ -8,22 +8,23 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/krixlion/dev_forum-article/pkg/env"
-	"github.com/krixlion/dev_forum-article/pkg/event"
-	"github.com/krixlion/dev_forum-article/pkg/event/broker"
-	"github.com/krixlion/dev_forum-article/pkg/event/dispatcher"
-	"github.com/krixlion/dev_forum-article/pkg/logging"
 	"github.com/krixlion/dev_forum-article/pkg/service"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-article/pkg/storage/eventstore"
 	"github.com/krixlion/dev_forum-article/pkg/storage/query"
-	"github.com/krixlion/dev_forum-article/pkg/tracing"
+	"github.com/krixlion/dev_forum-lib/env"
+	"github.com/krixlion/dev_forum-lib/event"
+	"github.com/krixlion/dev_forum-lib/event/broker"
+	"github.com/krixlion/dev_forum-lib/event/dispatcher"
+	"github.com/krixlion/dev_forum-lib/logging"
+	"github.com/krixlion/dev_forum-lib/tracing"
 	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 	"go.opentelemetry.io/otel"
 )
 
 // Hardcoded root dir name.
 const projectDir = "app"
+const serviceName = "article-service"
 
 var port int
 
@@ -35,7 +36,7 @@ func init() {
 }
 
 func main() {
-	shutdownTracing, err := tracing.InitProvider()
+	shutdownTracing, err := tracing.InitProvider(serviceName)
 	if err != nil {
 		logging.Log("Failed to initialize tracing", "err", err)
 	}
@@ -60,6 +61,8 @@ func main() {
 }
 
 func getServiceDependencies() service.Dependencies {
+	tracer := otel.Tracer(serviceName)
+
 	logger, err := logging.NewLogger()
 	if err != nil {
 		panic(err)
@@ -69,7 +72,7 @@ func getServiceDependencies() service.Dependencies {
 	cmd_host := os.Getenv("DB_WRITE_HOST")
 	cmd_user := os.Getenv("DB_WRITE_USER")
 	cmd_pass := os.Getenv("DB_WRITE_PASS")
-	cmd, err := eventstore.MakeDB(cmd_port, cmd_host, cmd_user, cmd_pass, logger)
+	cmd, err := eventstore.MakeDB(cmd_port, cmd_host, cmd_user, cmd_pass, logger, tracer)
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +80,7 @@ func getServiceDependencies() service.Dependencies {
 	query_port := os.Getenv("DB_READ_PORT")
 	query_host := os.Getenv("DB_READ_HOST")
 	query_pass := os.Getenv("DB_READ_PASS")
-	query, err := query.MakeDB(query_host, query_port, query_pass, logger)
+	query, err := query.MakeDB(query_host, query_port, query_pass, logger, tracer)
 	if err != nil {
 		panic(err)
 	}
@@ -96,13 +99,16 @@ func getServiceDependencies() service.Dependencies {
 		ClosedTimeout:     time.Second * 15,
 	}
 
-	tracer := otel.Tracer(tracing.ServiceName)
-	storage := storage.NewCQRStorage(cmd, query, logger)
+	storage := storage.NewCQRStorage(cmd, query, logger, tracer)
 
-	mq := rabbitmq.NewRabbitMQ(tracing.ServiceName, mq_user, mq_pass, mq_host, mq_port, mqConfig, logger, tracer)
+	mq := rabbitmq.NewRabbitMQ(serviceName, mq_user, mq_pass, mq_host, mq_port, mqConfig, logger, tracer)
 	broker := broker.NewBroker(mq, logger)
 	dispatcher := dispatcher.NewDispatcher(broker, 20)
 	dispatcher.SetSyncHandler(event.HandlerFunc(storage.CatchUp))
+
+	for eType, handlers := range storage.EventHandlers() {
+		dispatcher.Subscribe(eType, handlers...)
+	}
 
 	return service.Dependencies{
 		Logger:     logger,

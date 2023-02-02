@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/krixlion/dev_forum-article/pkg/event"
-	"github.com/krixlion/dev_forum-article/pkg/event/dispatcher"
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
-	"github.com/krixlion/dev_forum-article/pkg/logging"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
+	"github.com/krixlion/dev_forum-lib/event"
+	"github.com/krixlion/dev_forum-lib/event/dispatcher"
+	"github.com/krixlion/dev_forum-lib/logging"
 	"github.com/krixlion/dev_forum-proto/article_service/pb"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -31,8 +31,6 @@ type ArticleService struct {
 }
 
 type Dependencies struct {
-	Cmd        storage.Eventstore
-	Query      storage.Storage
 	Logger     logging.Logger
 	Broker     event.Broker
 	SyncEvents event.Consumer

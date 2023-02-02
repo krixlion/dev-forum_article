@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/event"
+	"github.com/krixlion/dev_forum-lib/event"
 )
 
 // Command Query Responsibility Segregation Storage is a standard storage
@@ -13,6 +13,7 @@ import (
 type CQRStorage interface {
 	Storage
 	CatchUp(event.Event)
+	EventHandlers() map[event.EventType][]event.Handler
 }
 
 type Eventstore interface {

@@ -5,10 +5,9 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/go-redis/redis/v9"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/tracing"
-	"go.opentelemetry.io/otel"
+	"github.com/krixlion/dev_forum-lib/tracing"
+	"github.com/redis/go-redis/v9"
 )
 
 func (db DB) Close() error {
@@ -16,7 +15,7 @@ func (db DB) Close() error {
 }
 
 func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Get")
+	ctx, span := db.tracer.Start(ctx, "redis.Get")
 	defer span.End()
 
 	id = addPrefix(articlesPrefix, id)
@@ -38,7 +37,7 @@ func (db DB) Get(ctx context.Context, id string) (entity.Article, error) {
 }
 
 func (db DB) GetMultiple(ctx context.Context, offset, limit string) (articles []entity.Article, err error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.GetMultiple")
+	ctx, span := db.tracer.Start(ctx, "redis.GetMultiple")
 	defer span.End()
 
 	var off int64
@@ -109,7 +108,7 @@ func (db DB) GetBelongingIDs(ctx context.Context, userId string) ([]string, erro
 }
 
 func (db DB) Create(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Create")
+	ctx, span := db.tracer.Start(ctx, "redis.Create")
 	defer span.End()
 
 	prefixedArticleId := addPrefix(articlesPrefix, article.Id)
@@ -130,7 +129,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 }
 
 func (db DB) Update(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Update")
+	ctx, span := db.tracer.Start(ctx, "redis.Update")
 	defer span.End()
 
 	prefixedId := addPrefix(articlesPrefix, article.Id)
@@ -156,7 +155,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 }
 
 func (db DB) Delete(ctx context.Context, id string) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "redis.Delete")
+	ctx, span := db.tracer.Start(ctx, "redis.Delete")
 	defer span.End()
 
 	_, err := db.redis.TxPipelined(ctx, func(p redis.Pipeliner) error {

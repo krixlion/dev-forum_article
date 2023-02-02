@@ -10,10 +10,10 @@ import (
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
 	"github.com/google/go-cmp/cmp"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/env"
-	"github.com/krixlion/dev_forum-article/pkg/event"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
-	"github.com/krixlion/dev_forum-article/pkg/helpers/nulls"
+	"github.com/krixlion/dev_forum-lib/env"
+	"github.com/krixlion/dev_forum-lib/event"
+	"github.com/krixlion/dev_forum-lib/nulls"
 )
 
 var (
@@ -32,7 +32,7 @@ func init() {
 }
 
 func setUpDB() DB {
-	db, err := MakeDB(port, host, user, pass, nulls.NullLogger{})
+	db, err := MakeDB(port, host, user, pass, nulls.NullLogger{}, nulls.NullTracer{})
 	if err != nil {
 		log.Fatalf("Failed to make DB, err: %s", err)
 	}

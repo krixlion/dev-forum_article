@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/event"
-	"github.com/krixlion/dev_forum-article/pkg/logging"
-	"github.com/krixlion/dev_forum-article/pkg/tracing"
-	"go.opentelemetry.io/otel"
+	"github.com/krixlion/dev_forum-lib/event"
+	"github.com/krixlion/dev_forum-lib/logging"
+	"github.com/krixlion/dev_forum-lib/tracing"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Manager is a wrapper for the read model and write model to use with Storage interface.
@@ -19,13 +19,15 @@ type Manager struct {
 	cmd    Eventstore
 	query  Storage
 	logger logging.Logger
+	tracer trace.Tracer
 }
 
-func NewCQRStorage(cmd Eventstore, query Storage, logger logging.Logger) CQRStorage {
+func NewCQRStorage(cmd Eventstore, query Storage, logger logging.Logger, tracer trace.Tracer) CQRStorage {
 	return &Manager{
 		cmd:    cmd,
 		query:  query,
 		logger: logger,
+		tracer: tracer,
 	}
 }
 
@@ -48,7 +50,7 @@ func (storage Manager) Close() error {
 }
 
 func (storage Manager) Get(ctx context.Context, id string) (entity.Article, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.Get")
+	ctx, span := storage.tracer.Start(ctx, "storage.Get")
 	defer span.End()
 
 	article, err := storage.query.Get(ctx, id)
@@ -60,7 +62,7 @@ func (storage Manager) Get(ctx context.Context, id string) (entity.Article, erro
 }
 
 func (storage Manager) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error) {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.GetMultiple")
+	ctx, span := storage.tracer.Start(ctx, "storage.GetMultiple")
 	defer span.End()
 
 	articles, err := storage.query.GetMultiple(ctx, offset, limit)
@@ -76,7 +78,7 @@ func (storage Manager) GetBelongingIDs(ctx context.Context, userId string) ([]st
 }
 
 func (storage Manager) Update(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.Update")
+	ctx, span := storage.tracer.Start(ctx, "storage.Update")
 	defer span.End()
 
 	if err := storage.cmd.Update(ctx, article); err != nil {
@@ -87,7 +89,7 @@ func (storage Manager) Update(ctx context.Context, article entity.Article) error
 }
 
 func (storage Manager) Create(ctx context.Context, article entity.Article) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.Create")
+	ctx, span := storage.tracer.Start(ctx, "storage.Create")
 	defer span.End()
 
 	if err := storage.cmd.Create(ctx, article); err != nil {
@@ -98,7 +100,7 @@ func (storage Manager) Create(ctx context.Context, article entity.Article) error
 }
 
 func (storage Manager) Delete(ctx context.Context, id string) error {
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.Delete")
+	ctx, span := storage.tracer.Start(ctx, "storage.Delete")
 	defer span.End()
 
 	if err := storage.cmd.Delete(ctx, id); err != nil {
@@ -113,7 +115,7 @@ func (db Manager) CatchUp(e event.Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "storage.CatchUp")
+	ctx, span := db.tracer.Start(ctx, "storage.CatchUp")
 	defer span.End()
 
 	switch e.Type {

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/krixlion/dev_forum-article/pkg/event"
-	"github.com/krixlion/dev_forum-article/pkg/event/dispatcher"
-	"github.com/krixlion/dev_forum-article/pkg/logging"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
+	"github.com/krixlion/dev_forum-lib/event"
+	"github.com/krixlion/dev_forum-lib/event/dispatcher"
+	"github.com/krixlion/dev_forum-lib/logging"
 	"github.com/krixlion/dev_forum-proto/article_service/pb"
 
 	"github.com/gofrs/uuid"

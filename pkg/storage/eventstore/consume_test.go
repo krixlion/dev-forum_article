@@ -9,8 +9,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/event"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-lib/event"
 )
 
 func Test_Consume(t *testing.T) {

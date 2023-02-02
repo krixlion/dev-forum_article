@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/env"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
-	"github.com/krixlion/dev_forum-article/pkg/helpers/nulls"
 	"github.com/krixlion/dev_forum-article/pkg/storage/query"
+	"github.com/krixlion/dev_forum-lib/env"
+	"github.com/krixlion/dev_forum-lib/nulls"
 )
 
 var (
@@ -29,7 +29,7 @@ func init() {
 }
 
 func setUpDB() query.DB {
-	db, err := query.MakeDB(host, port, pass, nulls.NullLogger{})
+	db, err := query.MakeDB(host, port, pass, nulls.NullLogger{}, nulls.NullTracer{})
 	if err != nil {
 		log.Fatalf("Failed to make DB, err: %s", err)
 	}

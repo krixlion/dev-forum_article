@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/krixlion/dev_forum-article/pkg/event"
-	"github.com/krixlion/dev_forum-article/pkg/tracing"
+	"github.com/krixlion/dev_forum-lib/event"
+	"github.com/krixlion/dev_forum-lib/tracing"
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
-	"go.opentelemetry.io/otel"
 )
 
 // Consume listens for new article event streams with given type and sends them through returned channel.
@@ -46,7 +45,7 @@ func (db DB) Consume(ctx context.Context, _ string, eType event.EventType) (<-ch
 					continue
 				}
 
-				ctx, span := otel.Tracer(tracing.ServiceName).Start(ctx, "esdb.Consume")
+				ctx, span := db.tracer.Start(ctx, "esdb.Consume")
 
 				originalEvent := subEvent.EventAppeared.OriginalEvent()
 				options.From = originalEvent.Position
