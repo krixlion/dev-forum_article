@@ -20,7 +20,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Create")
 	defer span.End()
 
-	e := event.MakeEvent(event.ArticleCreated, article)
+	e := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article)
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
@@ -47,7 +47,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Update")
 	defer span.End()
 
-	e := event.MakeEvent(event.ArticleUpdated, article)
+	e := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article)
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
@@ -83,7 +83,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Delete")
 	defer span.End()
 
-	e := event.MakeEvent(event.ArticleDeleted, id)
+	e := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id)
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)

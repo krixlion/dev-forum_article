@@ -53,7 +53,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	s.Dispatcher.Publish(event.MakeEvent(event.ArticleCreated, article))
+	s.Dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article))
 
 	return &pb.CreateArticleResponse{
 		Id: id.String(),
@@ -70,7 +70,7 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	s.Dispatcher.Publish(event.MakeEvent(event.ArticleDeleted, id))
+	s.Dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id))
 
 	return &pb.DeleteArticleResponse{}, nil
 }
@@ -85,7 +85,7 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	s.Dispatcher.Publish(event.MakeEvent(event.ArticleUpdated, article))
+	s.Dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article))
 
 	return &pb.UpdateArticleResponse{}, nil
 }

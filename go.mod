@@ -6,7 +6,7 @@ require (
 	github.com/EventStore/EventStore-Client-Go/v3 v3.0.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/go-cmp v0.5.9
-	github.com/krixlion/dev_forum-lib v0.0.0-20230202184322-c94132c1270b
+	github.com/krixlion/dev_forum-lib v0.0.0-20230202201221-7bfcc84ebd1b
 	github.com/krixlion/dev_forum-proto v0.0.0-20230125135445-2b61385445fd
 	github.com/krixlion/dev_forum-rabbitmq v0.0.0-20230117212649-13191a7dfea7
 	github.com/redis/go-redis/extra/redisotel/v9 v9.0.2
