@@ -10,7 +10,7 @@ import (
 
 func (db Manager) EventHandlers() map[event.EventType][]event.Handler {
 	return map[event.EventType][]event.Handler{
-		event.ArticleCreated: {
+		event.UserDeleted: {
 			db.DeleteUsersArticles(),
 		},
 	}
@@ -20,6 +20,10 @@ func (db Manager) DeleteUsersArticles() event.HandlerFunc {
 	return func(e event.Event) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
+
+		if e.Type != event.UserDeleted {
+			return
+		}
 
 		var userId string
 		if err := json.Unmarshal(e.Body, &userId); err != nil {
@@ -32,7 +36,6 @@ func (db Manager) DeleteUsersArticles() event.HandlerFunc {
 			db.logger.Log(ctx, "Failed to get belonging IDs", "err", err)
 			return
 		}
-
 		for _, id := range articleIds {
 			if err := db.Delete(ctx, id); err != nil {
 				db.logger.Log(ctx, "Failed to delete article", "err", err)

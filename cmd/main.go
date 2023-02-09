@@ -102,10 +102,9 @@ func getServiceDependencies() service.Dependencies {
 	storage := storage.NewCQRStorage(cmd, query, logger, tracer)
 
 	mq := rabbitmq.NewRabbitMQ(serviceName, mq_user, mq_pass, mq_host, mq_port, mqConfig, logger, tracer)
-	broker := broker.NewBroker(mq, logger)
+	broker := broker.NewBroker(mq, logger, tracer)
 	dispatcher := dispatcher.NewDispatcher(broker, 20)
 	dispatcher.SetSyncHandler(event.HandlerFunc(storage.CatchUp))
-
 	for eType, handlers := range storage.EventHandlers() {
 		dispatcher.Subscribe(eType, handlers...)
 	}

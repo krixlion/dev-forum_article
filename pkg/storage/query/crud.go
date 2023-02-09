@@ -159,8 +159,10 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	defer span.End()
 
 	_, err := db.redis.TxPipelined(ctx, func(p redis.Pipeliner) error {
-		id = addPrefix(articlesPrefix, id)
-		db.redis.Del(ctx, id).Result()
+		userId, _ := db.redis.HGet(ctx, addPrefix(articlesPrefix, id), "user_id").Result()
+
+		db.redis.Del(ctx, addPrefix(articlesPrefix, id)).Result()
+		db.redis.SRem(ctx, addPrefix(usersPrefix, userId), id)
 		return nil
 	})
 	if err != nil {

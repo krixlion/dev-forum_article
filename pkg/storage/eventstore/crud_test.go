@@ -6,9 +6,11 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"github.com/krixlion/dev_forum-lib/env"
@@ -108,7 +110,7 @@ func Test_Create(t *testing.T) {
 			}
 
 			if !cmp.Equal(tC.args.article, got) {
-				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n", got, tC.args.article)
+				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n %v\n", got, tC.args.article, cmp.Diff(got, tC.args.article))
 				return
 			}
 		})
@@ -184,7 +186,7 @@ func Test_Update(t *testing.T) {
 			}
 
 			if !cmp.Equal(tC.args.article, got) {
-				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n", got, tC.args.article)
+				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n %v\n", got, tC.args.article, cmp.Diff(got, tC.args.article))
 				return
 			}
 		})
@@ -264,30 +266,46 @@ func Test_Delete(t *testing.T) {
 }
 
 func Test_lastRevision(t *testing.T) {
-	type args struct {
-		ctx       context.Context
-		articleId string
-	}
-	tests := []struct {
+	testCases := []struct {
 		desc    string
-		args    args
-		want    event.Event
+		article entity.Article
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			desc:    "Test if correctly returns simple article revision.",
+			article: gentest.RandomArticle(5, 5),
+		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
-			got, err := db.lastRevision(tt.args.ctx, tt.args.articleId)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DB.lastRevision() error = %v, wantErr %v", err, tt.wantErr)
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			defer cancel()
+
+			if err := db.Create(ctx, tC.article); err != nil {
+				t.Errorf("DB.lastRevision() error during prep = %v", err)
 				return
 			}
 
-			if !cmp.Equal(got, tt.want) {
-				t.Errorf("DB.lastRevision() = %v, want %v", got, tt.want)
+			want := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, tC.article)
+
+			resEvent, err := db.lastRevision(ctx, tC.article.Id)
+			if (err != nil) != tC.wantErr {
+				t.Errorf("DB.lastRevision() error = %v, wantErr %v", err, tC.wantErr)
+				return
+			}
+
+			data := resEvent.OriginalEvent().Data
+			var got event.Event
+			if err = json.Unmarshal(data, &got); err != nil {
+				t.Errorf("Failed to unmarshal last revision event, error = %v", err)
+				return
+			}
+
+			if !cmp.Equal(got, want, cmpopts.EquateApproxTime(time.Second)) {
+				t.Errorf("DB.lastRevision():\n got = %v\n want = %v\n %v\n", got, want, cmp.Diff(got, want))
 			}
 		})
 	}

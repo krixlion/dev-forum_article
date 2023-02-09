@@ -9,10 +9,9 @@ import (
 )
 
 type DB struct {
-	logger logging.Logger
 	client *esdb.Client
-	url    string
 	tracer trace.Tracer
+	logger logging.Logger
 }
 
 func formatConnString(port, host, user, pass string) string {
@@ -32,7 +31,6 @@ func MakeDB(port, host, user, pass string, logger logging.Logger, tracer trace.T
 	}
 
 	return DB{
-		url:    url,
 		client: client,
 		logger: logger,
 		tracer: tracer,
