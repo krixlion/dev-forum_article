@@ -32,17 +32,18 @@ func init() {
 	portFlag := flag.Int("p", 50051, "The gRPC server port")
 	flag.Parse()
 	port = *portFlag
-	env.Load(projectDir)
 }
 
 func main() {
-	shutdownTracing, err := tracing.InitProvider(serviceName)
+	env.Load(projectDir)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	shutdownTracing, err := tracing.InitProvider(ctx, serviceName)
 	if err != nil {
 		logging.Log("Failed to initialize tracing", "err", err)
 	}
 
 	service := service.NewArticleService(port, getServiceDependencies())
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	service.Run(ctx)
 
 	<-ctx.Done()
