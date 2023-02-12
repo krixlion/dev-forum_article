@@ -3,8 +3,13 @@ package server
 import (
 	"context"
 
+	"github.com/krixlion/dev_forum-lib/tracing"
 	"github.com/krixlion/dev_forum-proto/article_service/pb"
+	userPb "github.com/krixlion/dev_forum-proto/user_service/pb"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func (s ArticleServer) ValidateRequestInterceptor() grpc.UnaryServerInterceptor {
@@ -24,7 +29,24 @@ func (s ArticleServer) ValidateRequestInterceptor() grpc.UnaryServerInterceptor 
 }
 
 func (s ArticleServer) validateCreate(ctx context.Context, req *pb.CreateArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
-	return handler(ctx, req)
+	ctx, span := s.tracer.Start(ctx, "grpc.validateCreate", trace.WithSpanKind(trace.SpanKindClient))
+	defer span.End()
+
+	article := articleFromPB(req.GetArticle())
+
+	userResp, err := s.userClient.Get(ctx, &userPb.GetUserRequest{Id: article.Id})
+	if err != nil {
+		tracing.SetSpanErr(span, err)
+		return nil, err
+	}
+
+	if userResp.GetUser().GetId() != "" {
+		return handler(ctx, req)
+	}
+
+	err = status.Error(codes.FailedPrecondition, "User with provided ID does not exist.")
+	tracing.SetSpanErr(span, err)
+	return nil, err
 }
 
 func (s ArticleServer) validateUpdate(ctx context.Context, req *pb.UpdateArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {

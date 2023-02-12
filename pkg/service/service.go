@@ -66,8 +66,7 @@ func (s *ArticleService) Run(ctx context.Context) {
 	}()
 
 	s.logger.Log(ctx, "listening", "transport", "grpc", "port", s.grpcPort)
-	err = s.grpcServer.Serve(lis)
-	if err != nil {
+	if err = s.grpcServer.Serve(lis); err != nil {
 		s.logger.Log(ctx, "failed to serve", "transport", "grpc", "err", err)
 	}
 }

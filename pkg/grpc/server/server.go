@@ -11,6 +11,8 @@ import (
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/logging"
 	"github.com/krixlion/dev_forum-proto/article_service/pb"
+	userPb "github.com/krixlion/dev_forum-proto/user_service/pb"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/gofrs/uuid"
 	"google.golang.org/grpc/codes"
@@ -20,16 +22,28 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
+	userClient userPb.UserServiceClient
 	storage    storage.CQRStorage
-	logger     logging.Logger
 	dispatcher *dispatcher.Dispatcher
+	logger     logging.Logger
+	tracer     trace.Tracer
 }
 
-func NewArticleServer(storage storage.CQRStorage, logger logging.Logger, dispatcher *dispatcher.Dispatcher) ArticleServer {
+type Dependencies struct {
+	UserClient userPb.UserServiceClient
+	Storage    storage.CQRStorage
+	Dispatcher *dispatcher.Dispatcher
+	Logger     logging.Logger
+	Tracer     trace.Tracer
+}
+
+func NewArticleServer(d Dependencies) ArticleServer {
 	return ArticleServer{
-		storage:    storage,
-		logger:     logger,
-		dispatcher: dispatcher,
+		userClient: d.UserClient,
+		storage:    d.Storage,
+		dispatcher: d.Dispatcher,
+		logger:     d.Logger,
+		tracer:     d.Tracer,
 	}
 }
 
@@ -49,6 +63,9 @@ func (s ArticleServer) Close() error {
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
+	ctx, span := s.tracer.Start(ctx, "server.Create")
+	defer span.End()
+
 	article := articleFromPB(req.GetArticle())
 	id, err := uuid.NewV4()
 	if err != nil {
@@ -69,6 +86,9 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 }
 
 func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (*pb.DeleteArticleResponse, error) {
+	ctx, span := s.tracer.Start(ctx, "server.Delete")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
@@ -84,6 +104,9 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 }
 
 func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (*pb.UpdateArticleResponse, error) {
+	ctx, span := s.tracer.Start(ctx, "server.Update")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
@@ -99,6 +122,9 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 }
 
 func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.GetArticleResponse, error) {
+	ctx, span := s.tracer.Start(ctx, "server.Get")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
@@ -120,8 +146,9 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 }
 
 func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleService_GetStreamServer) error {
-	ctx, cancel := context.WithTimeout(stream.Context(), time.Second*10)
-	defer cancel()
+	ctx := stream.Context()
+	ctx, span := s.tracer.Start(ctx, "server.GetStream")
+	defer span.End()
 
 	articles, err := s.storage.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
 	if err != nil {
@@ -142,8 +169,7 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 				UpdatedAt: timestamppb.New(v.UpdatedAt),
 			}
 
-			err := stream.Send(&article)
-			if err != nil {
+			if err := stream.Send(&article); err != nil {
 				return err
 			}
 		}

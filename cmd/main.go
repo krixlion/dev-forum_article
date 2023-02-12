@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
@@ -23,11 +22,13 @@ import (
 	"github.com/krixlion/dev_forum-lib/logging"
 	"github.com/krixlion/dev_forum-lib/tracing"
 	"github.com/krixlion/dev_forum-proto/article_service/pb"
+	userPb "github.com/krixlion/dev_forum-proto/user_service/pb"
 	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -97,11 +98,13 @@ func getServiceDependencies() service.Dependencies {
 		panic(err)
 	}
 
+	storage := storage.NewCQRStorage(cmd, query, logger, tracer)
+
 	mqPort := os.Getenv("MQ_PORT")
 	mqHost := os.Getenv("MQ_HOST")
 	mqUser := os.Getenv("MQ_USER")
 	mqPass := os.Getenv("MQ_PASS")
-
+	consumer := serviceName
 	mqConfig := rabbitmq.Config{
 		QueueSize:         100,
 		MaxWorkers:        100,
@@ -111,10 +114,17 @@ func getServiceDependencies() service.Dependencies {
 		ClosedTimeout:     time.Second * 15,
 	}
 
-	storage := storage.NewCQRStorage(cmd, query, logger, tracer)
-
-	mq := rabbitmq.NewRabbitMQ(serviceName, mqUser, mqPass, mqHost, mqPort, mqConfig, logger, tracer)
-	broker := broker.NewBroker(mq, logger, tracer)
+	messageQueue := rabbitmq.NewRabbitMQ(
+		consumer,
+		mqUser,
+		mqPass,
+		mqHost,
+		mqPort,
+		mqConfig,
+		rabbitmq.WithLogger(logger),
+		rabbitmq.WithTracer(tracer),
+	)
+	broker := broker.NewBroker(messageQueue, logger, tracer)
 	dispatcher := dispatcher.NewDispatcher(broker, 20)
 	dispatcher.SetSyncHandler(event.HandlerFunc(storage.CatchUp))
 
@@ -122,12 +132,31 @@ func getServiceDependencies() service.Dependencies {
 		dispatcher.Subscribe(eType, handlers...)
 	}
 
-	articleServer := server.NewArticleServer(storage, logger, dispatcher)
+	// TODO Let ArticleService be partially operative without UserClient.
+	conn, err := grpc.Dial("user-service:50051",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(
+			otelgrpc.UnaryClientInterceptor(),
+		),
+	)
+	if err != nil {
+		panic(err)
+	}
+	client := userPb.NewUserServiceClient(conn)
+
+	articleServer := server.NewArticleServer(server.Dependencies{
+		UserClient: client,
+		Storage:    storage,
+		Dispatcher: dispatcher,
+		Logger:     logger,
+		Tracer:     tracer,
+	})
 
 	grpcServer := grpc.NewServer(
-		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
-
-		grpc_middleware.WithUnaryServerChain(
+		grpc.StreamInterceptor(
+			otelgrpc.StreamServerInterceptor(),
+		),
+		grpc.ChainUnaryInterceptor(
 			grpc_recovery.UnaryServerInterceptor(),
 			grpc_zap.UnaryServerInterceptor(zap.L()),
 			otelgrpc.UnaryServerInterceptor(),

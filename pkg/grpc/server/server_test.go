@@ -40,7 +40,13 @@ func setUpServer(ctx context.Context, storage mocks.CQRStorage[entity.Article], 
 	}
 
 	s := grpc.NewServer()
-	server := server.NewArticleServer(storage, nulls.NullLogger{}, dispatcher.NewDispatcher(broker, 2))
+	server := server.NewArticleServer(server.Dependencies{
+		Storage:    storage,
+		Dispatcher: dispatcher.NewDispatcher(broker, 2),
+		Logger:     nulls.NullLogger{},
+		Tracer:     nulls.NullTracer{},
+	})
+
 	pb.RegisterArticleServiceServer(s, server)
 	go func() {
 		if err := s.Serve(lis); err != nil {

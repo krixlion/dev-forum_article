@@ -7,6 +7,7 @@ import (
 
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/tracing"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
 )
@@ -45,7 +46,7 @@ func (db DB) Consume(ctx context.Context, _ string, eType event.EventType) (<-ch
 					continue
 				}
 
-				ctx, span := db.tracer.Start(ctx, "esdb.Consume")
+				ctx, span := db.tracer.Start(ctx, "esdb.Consume", trace.WithSpanKind(trace.SpanKindConsumer))
 
 				originalEvent := subEvent.EventAppeared.OriginalEvent()
 				options.From = originalEvent.Position
