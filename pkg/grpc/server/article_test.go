@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func Test_ArticleFromPB(t *testing.T) {
+func Test_articleFromPB(t *testing.T) {
 	id := gentest.RandomString(3)
 	userId := gentest.RandomString(3)
 	body := gentest.RandomString(3)

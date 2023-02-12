@@ -20,15 +20,23 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	Storage    storage.CQRStorage
-	Logger     logging.Logger
-	Dispatcher *dispatcher.Dispatcher
+	storage    storage.CQRStorage
+	logger     logging.Logger
+	dispatcher *dispatcher.Dispatcher
+}
+
+func NewArticleServer(storage storage.CQRStorage, logger logging.Logger, dispatcher *dispatcher.Dispatcher) ArticleServer {
+	return ArticleServer{
+		storage:    storage,
+		logger:     logger,
+		dispatcher: dispatcher,
+	}
 }
 
 func (s ArticleServer) Close() error {
 	var errMsg string
 
-	err := s.Storage.Close()
+	err := s.storage.Close()
 	if err != nil {
 		errMsg = fmt.Sprintf("%s, failed to close storage: %s", errMsg, err)
 	}
@@ -49,11 +57,11 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	// Assign new UUID to article about to be created.
 	article.Id = id.String()
 
-	if err = s.Storage.Create(ctx, article); err != nil {
+	if err := s.storage.Create(ctx, article); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	s.Dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article))
+	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article))
 
 	return &pb.CreateArticleResponse{
 		Id: id.String(),
@@ -66,11 +74,11 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 
 	id := req.GetId()
 
-	if err := s.Storage.Delete(ctx, id); err != nil {
+	if err := s.storage.Delete(ctx, id); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	s.Dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id))
+	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id))
 
 	return &pb.DeleteArticleResponse{}, nil
 }
@@ -81,11 +89,11 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 
 	article := articleFromPB(req.GetArticle())
 
-	if err := s.Storage.Update(ctx, article); err != nil {
+	if err := s.storage.Update(ctx, article); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	s.Dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article))
+	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article))
 
 	return &pb.UpdateArticleResponse{}, nil
 }
@@ -94,7 +102,7 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	article, err := s.Storage.Get(ctx, req.GetId())
+	article, err := s.storage.Get(ctx, req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get article: %v", err)
 	}
@@ -115,7 +123,7 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 	ctx, cancel := context.WithTimeout(stream.Context(), time.Second*10)
 	defer cancel()
 
-	articles, err := s.Storage.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
+	articles, err := s.storage.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
 	if err != nil {
 		return err
 	}

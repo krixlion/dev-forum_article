@@ -11,7 +11,7 @@ func articleFromPB(v *pb.Article) entity.Article {
 		UserId:    v.GetUserId(),
 		Title:     v.GetTitle(),
 		Body:      v.GetBody(),
-		CreatedAt: (v.GetCreatedAt().AsTime()),
-		UpdatedAt: (v.GetUpdatedAt().AsTime()),
+		CreatedAt: v.GetCreatedAt().AsTime(),
+		UpdatedAt: v.GetUpdatedAt().AsTime(),
 	}
 }

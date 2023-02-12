@@ -19,6 +19,7 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/mocks"
+	"github.com/krixlion/dev_forum-lib/nulls"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -39,10 +40,7 @@ func setUpServer(ctx context.Context, storage mocks.CQRStorage[entity.Article], 
 	}
 
 	s := grpc.NewServer()
-	server := server.ArticleServer{
-		Storage:    storage,
-		Dispatcher: dispatcher.NewDispatcher(broker, 2),
-	}
+	server := server.NewArticleServer(storage, nulls.NullLogger{}, dispatcher.NewDispatcher(broker, 2))
 	pb.RegisterArticleServiceServer(s, server)
 	go func() {
 		if err := s.Serve(lis); err != nil {

@@ -5,62 +5,47 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/logging"
-	"github.com/krixlion/dev_forum-proto/article_service/pb"
-
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 type ArticleService struct {
-	grpcPort int
-	grpcSrv  *grpc.Server
-	srv      server.ArticleServer
+	grpcPort   int
+	grpcServer *grpc.Server
 
 	// Consumer for events used to update and sync the read model.
 	syncEventSource event.Consumer
 	broker          event.Broker
 	dispatcher      *dispatcher.Dispatcher
 	logger          logging.Logger
+	shutdown        func() error
 }
 
 type Dependencies struct {
-	Logger     logging.Logger
-	Broker     event.Broker
-	SyncEvents event.Consumer
-	Storage    storage.CQRStorage
-	Dispatcher *dispatcher.Dispatcher
+	Logger       logging.Logger
+	Broker       event.Broker
+	GRPCServer   *grpc.Server
+	SyncEvents   event.Consumer
+	Storage      storage.CQRStorage
+	Dispatcher   *dispatcher.Dispatcher
+	ShutdownFunc func() error
 }
 
 func NewArticleService(grpcPort int, d Dependencies) *ArticleService {
-	srv := server.ArticleServer{
-		Storage:    d.Storage,
-		Logger:     d.Logger,
-		Dispatcher: d.Dispatcher,
-	}
-
-	baseSrv := grpc.NewServer(
-		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
-	)
-
 	s := &ArticleService{
 		grpcPort:        grpcPort,
-		grpcSrv:         baseSrv,
-		srv:             srv,
 		dispatcher:      d.Dispatcher,
+		grpcServer:      d.GRPCServer,
 		broker:          d.Broker,
 		syncEventSource: d.SyncEvents,
 		logger:          d.Logger,
+		shutdown:        d.ShutdownFunc,
 	}
-	reflection.Register(s.grpcSrv)
-	pb.RegisterArticleServiceServer(s.grpcSrv, s.srv)
+
 	return s
 }
 
@@ -81,15 +66,14 @@ func (s *ArticleService) Run(ctx context.Context) {
 	}()
 
 	s.logger.Log(ctx, "listening", "transport", "grpc", "port", s.grpcPort)
-	err = s.grpcSrv.Serve(lis)
+	err = s.grpcServer.Serve(lis)
 	if err != nil {
 		s.logger.Log(ctx, "failed to serve", "transport", "grpc", "err", err)
 	}
 }
 
 func (s *ArticleService) Close() error {
-	s.grpcSrv.GracefulStop()
-	return s.srv.Close()
+	return s.shutdown()
 }
 
 func (s *ArticleService) syncEventProviders(ctx context.Context) (chans []<-chan event.Event) {
