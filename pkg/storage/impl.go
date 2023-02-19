@@ -14,6 +14,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+var _ CQRStorage = (*Manager)(nil)
+
 // Manager is a wrapper for the read model and write model to use with Storage interface.
 type Manager struct {
 	cmd    Eventstore
@@ -74,6 +76,9 @@ func (storage Manager) GetMultiple(ctx context.Context, offset, limit string) ([
 }
 
 func (storage Manager) GetBelongingIDs(ctx context.Context, userId string) ([]string, error) {
+	ctx, span := storage.tracer.Start(ctx, "storage.GetBelongingIDs")
+	defer span.End()
+
 	return storage.query.GetBelongingIDs(ctx, userId)
 }
 

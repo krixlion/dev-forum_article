@@ -14,7 +14,6 @@ import (
 	userPb "github.com/krixlion/dev_forum-proto/user_service/pb"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/gofrs/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -67,12 +66,6 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	defer span.End()
 
 	article := articleFromPB(req.GetArticle())
-	id, err := uuid.NewV4()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	// Assign new UUID to article about to be created.
-	article.Id = id.String()
 
 	if err := s.storage.Create(ctx, article); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -81,7 +74,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article))
 
 	return &pb.CreateArticleResponse{
-		Id: id.String(),
+		Id: article.Id,
 	}, nil
 }
 

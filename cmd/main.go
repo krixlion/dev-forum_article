@@ -132,7 +132,6 @@ func getServiceDependencies() service.Dependencies {
 		dispatcher.Subscribe(eType, handlers...)
 	}
 
-	// TODO Let ArticleService be partially operative without UserClient.
 	conn, err := grpc.Dial("user-service:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(
@@ -142,10 +141,10 @@ func getServiceDependencies() service.Dependencies {
 	if err != nil {
 		panic(err)
 	}
-	client := userPb.NewUserServiceClient(conn)
+	userClient := userPb.NewUserServiceClient(conn)
 
 	articleServer := server.NewArticleServer(server.Dependencies{
-		UserClient: client,
+		UserClient: userClient,
 		Storage:    storage,
 		Dispatcher: dispatcher,
 		Logger:     logger,
@@ -176,6 +175,7 @@ func getServiceDependencies() service.Dependencies {
 		Dispatcher: dispatcher,
 		ShutdownFunc: func() error {
 			grpcServer.GracefulStop()
+			conn.Close()
 			return articleServer.Close()
 		},
 	}

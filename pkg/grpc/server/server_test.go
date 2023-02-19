@@ -96,12 +96,12 @@ func Test_Get(t *testing.T) {
 				Article: article,
 			},
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(v, nil).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -114,12 +114,12 @@ func Test_Get(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, errors.New("test err")).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -180,12 +180,12 @@ func Test_Create(t *testing.T) {
 				Id: article.Id,
 			},
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -198,12 +198,12 @@ func Test_Create(t *testing.T) {
 			dontWant: nil,
 			wantErr:  true,
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -232,10 +232,6 @@ func Test_Create(t *testing.T) {
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if got != tC.dontWant {
-				if cmp.Equal(got.Id, tC.dontWant.Id) {
-					t.Errorf("Article IDs was not reassigned:\n Got = %+v\n want = %+v\n", got.Id, tC.dontWant.Id)
-					return
-				}
 				if _, err := uuid.FromString(got.Id); err != nil {
 					t.Errorf("Article ID is not correct UUID:\n ID = %+v\n err = %+v", got.Id, err)
 					return
@@ -269,12 +265,12 @@ func Test_Update(t *testing.T) {
 			},
 			want: &pb.UpdateArticleResponse{},
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -287,12 +283,12 @@ func Test_Update(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -354,12 +350,12 @@ func Test_Delete(t *testing.T) {
 			},
 			want: &pb.DeleteArticleResponse{},
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(nil).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -372,12 +368,12 @@ func Test_Delete(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -451,12 +447,12 @@ func Test_GetStream(t *testing.T) {
 			},
 			want: pbArticles,
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(articles, nil).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),
@@ -467,12 +463,12 @@ func Test_GetStream(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.CQRStorage[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return([]entity.Article{}, errors.New("test err")).Times(1)
 				return m
 			}(),
 			broker: func() mocks.Broker {
-				m := mocks.Broker{Mock: new(mock.Mock)}
+				m := mocks.NewBroker()
 				m.On("ResilientPublish", mock.AnythingOfType("event.Event")).Return(nil).Once()
 				return m
 			}(),

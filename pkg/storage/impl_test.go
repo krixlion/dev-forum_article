@@ -39,7 +39,7 @@ func Test_Get(t *testing.T) {
 			},
 			want: entity.Article{},
 			query: func() mocks.Query[entity.Article] {
-				m := mocks.Query[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewQuery[entity.Article]()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, nil).Once()
 				return m
 			}(),
@@ -53,7 +53,7 @@ func Test_Get(t *testing.T) {
 			want:    entity.Article{},
 			wantErr: true,
 			query: func() mocks.Query[entity.Article] {
-				m := mocks.Query[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewQuery[entity.Article]()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, errors.New("test err")).Once()
 				return m
 			}(),
@@ -99,7 +99,7 @@ func Test_GetMultiple(t *testing.T) {
 			},
 			want: []entity.Article{},
 			query: func() mocks.Query[entity.Article] {
-				m := mocks.Query[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewQuery[entity.Article]()
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return([]entity.Article{}, nil).Once()
 				return m
 			}(),
@@ -114,7 +114,7 @@ func Test_GetMultiple(t *testing.T) {
 			want:    []entity.Article{},
 			wantErr: true,
 			query: func() mocks.Query[entity.Article] {
-				m := mocks.Query[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewQuery[entity.Article]()
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return([]entity.Article{}, errors.New("test err")).Once()
 				return m
 			}(),
@@ -308,7 +308,7 @@ func Test_CatchUp(t *testing.T) {
 			},
 			method: "Update",
 			query: func() mocks.Query[entity.Article] {
-				m := mocks.Query[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewQuery[entity.Article]()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
 				return m
 			}(),
@@ -321,7 +321,7 @@ func Test_CatchUp(t *testing.T) {
 			},
 			method: "Create",
 			query: func() mocks.Query[entity.Article] {
-				m := mocks.Query[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewQuery[entity.Article]()
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
 				return m
 			}(),
@@ -340,7 +340,7 @@ func Test_CatchUp(t *testing.T) {
 			},
 			method: "Delete",
 			query: func() mocks.Query[entity.Article] {
-				m := mocks.Query[entity.Article]{Mock: new(mock.Mock)}
+				m := mocks.NewQuery[entity.Article]()
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(nil).Once()
 				return m
 			}(),
