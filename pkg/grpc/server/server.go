@@ -21,7 +21,7 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	userClient userPb.UserServiceClient
+	services   Services
 	storage    storage.CQRStorage
 	dispatcher *dispatcher.Dispatcher
 	logger     logging.Logger
@@ -29,16 +29,20 @@ type ArticleServer struct {
 }
 
 type Dependencies struct {
-	UserClient userPb.UserServiceClient
+	Services   Services
 	Storage    storage.CQRStorage
 	Dispatcher *dispatcher.Dispatcher
 	Logger     logging.Logger
 	Tracer     trace.Tracer
 }
 
+type Services struct {
+	User userPb.UserServiceClient
+}
+
 func NewArticleServer(d Dependencies) ArticleServer {
 	return ArticleServer{
-		userClient: d.UserClient,
+		services:   d.Services,
 		storage:    d.Storage,
 		dispatcher: d.Dispatcher,
 		logger:     d.Logger,

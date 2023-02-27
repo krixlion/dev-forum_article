@@ -144,7 +144,9 @@ func getServiceDependencies() service.Dependencies {
 	userClient := userPb.NewUserServiceClient(conn)
 
 	articleServer := server.NewArticleServer(server.Dependencies{
-		UserClient: userClient,
+		Services: server.Services{
+			User: userClient,
+		},
 		Storage:    storage,
 		Dispatcher: dispatcher,
 		Logger:     logger,

@@ -48,7 +48,7 @@ func (s ArticleServer) validateCreate(ctx context.Context, req *pb.CreateArticle
 	req.GetArticle().Id = id.String()
 
 	article := articleFromPB(req.GetArticle())
-	userResp, err := s.userClient.Get(ctx, &userPb.GetUserRequest{Id: article.UserId})
+	userResp, err := s.services.User.Get(ctx, &userPb.GetUserRequest{Id: article.UserId})
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return nil, err
