@@ -41,7 +41,7 @@ func Test_validateCreate(t *testing.T) {
 		handler    mocks.UnaryHandler
 		userClient mocks.UserClient
 		req        *pb.CreateArticleRequest
-		want       interface{} // *pb.CreateArticleResponse
+		want       *pb.CreateArticleResponse
 		wantErr    bool
 	}{
 		{
@@ -85,7 +85,8 @@ func Test_validateCreate(t *testing.T) {
 				t.Errorf("ArticleServer.validateCreate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second), cmpopts.EquateEmpty()) {
+
+			if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second), cmpopts.EquateEmpty()) && !tt.wantErr {
 				t.Errorf("ArticleServer.validateCreate():\n got = %v\n want = %v\n %v", got, tt.want, cmp.Diff(got, tt.want))
 			}
 		})
@@ -100,14 +101,13 @@ func Test_validateUpdate(t *testing.T) {
 		broker     mocks.Broker
 		userClient mocks.UserClient
 		req        *pb.UpdateArticleRequest
-		want       interface{} // *pb.UpdateArticleResponse
+		want       *pb.UpdateArticleResponse
 		wantErr    bool
 	}{
 		{
-			name: "Test if validation fails on invalid article",
+			name: "Test if validation fails on nil article",
 			handler: func() mocks.UnaryHandler {
 				m := mocks.NewUnaryHandler()
-				m.On("", mock.Anything).Return().Once()
 				return m
 			}(),
 			userClient: mocks.NewUserClient(),
@@ -135,7 +135,8 @@ func Test_validateUpdate(t *testing.T) {
 				t.Errorf("ArticleServer.validateUpdate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second), cmpopts.EquateEmpty()) {
+
+			if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second)) && !tt.wantErr {
 				t.Errorf("ArticleServer.validateUpdate():\n got = %v\n want = %v\n %v", got, tt.want, cmp.Diff(got, tt.want))
 			}
 		})

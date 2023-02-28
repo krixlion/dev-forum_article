@@ -61,7 +61,7 @@ func TestManager_DeleteUsersArticles(t *testing.T) {
 		t.Skip("Skipping DeleteUsersArticles integration test.")
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		desc string
 		want event.Event
 	}{
@@ -70,13 +70,13 @@ func TestManager_DeleteUsersArticles(t *testing.T) {
 			want: event.MakeEvent(event.UserAggregate, event.UserDeleted, "10"),
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 
 			db, d := setUpDBAndDispatcher()
-			d.Subscribe(tC.want.Type, db.DeleteUsersArticles())
+			d.Subscribe(tt.want.Type, db.DeleteUsersArticles())
 			go d.Run(context.Background())
-			d.Dispatch(tC.want)
+			d.Dispatch(tt.want)
 
 			// Wait for the handler to be run in a seperate goroutine.
 			time.Sleep(time.Second)
@@ -85,7 +85,7 @@ func TestManager_DeleteUsersArticles(t *testing.T) {
 			defer cancel()
 
 			var userId string
-			err := json.Unmarshal(tC.want.Body, &userId)
+			err := json.Unmarshal(tt.want.Body, &userId)
 			if err != nil {
 				panic(err)
 			}

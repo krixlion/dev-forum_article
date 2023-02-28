@@ -10,7 +10,7 @@ import (
 )
 
 func Test_toLowerSnakeCase(t *testing.T) {
-	testCases := []struct {
+	tests := []struct {
 		desc string
 		arg  string
 		want string
@@ -26,11 +26,11 @@ func Test_toLowerSnakeCase(t *testing.T) {
 			want: "user_might_wantto_fix_that",
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
-			got := toLowerSnakeCase(tC.arg)
-			if !cmp.Equal(got, tC.want) {
-				t.Errorf("Wrong output:\n got = %+v\n want = %+v\n", got, tC.want)
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			got := toLowerSnakeCase(tt.arg)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("Wrong output:\n got = %+v\n want = %+v\n", got, tt.want)
 				return
 			}
 		})
@@ -40,7 +40,7 @@ func Test_toLowerSnakeCase(t *testing.T) {
 func Test_mapArticle(t *testing.T) {
 	article := gentest.RandomArticle(2, 5)
 
-	testCases := []struct {
+	tests := []struct {
 		desc string
 		arg  entity.Article
 		want map[string]string
@@ -58,11 +58,11 @@ func Test_mapArticle(t *testing.T) {
 			},
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
-			got := mapArticle(tC.arg)
-			if !cmp.Equal(got, tC.want) {
-				t.Errorf("Wrong output:\n got = %+v\n want = %+v\n", got, tC.want)
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			got := mapArticle(tt.arg)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("Wrong output:\n got = %+v\n want = %+v\n", got, tt.want)
 				return
 			}
 		})
@@ -74,7 +74,7 @@ func Test_addPrefix(t *testing.T) {
 		prefix string
 		key    string
 	}
-	testCases := []struct {
+	tests := []struct {
 		desc string
 		args args
 		want string
@@ -88,11 +88,11 @@ func Test_addPrefix(t *testing.T) {
 			want: "articles:*->title",
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
-			got := addPrefix(tC.args.prefix, tC.args.key)
-			if got != tC.want {
-				t.Errorf("Failed to add prefix:\n got = %+v\n want = %+v\n", got, tC.want)
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			got := addPrefix(tt.args.prefix, tt.args.key)
+			if got != tt.want {
+				t.Errorf("Failed to add prefix:\n got = %+v\n want = %+v\n", got, tt.want)
 				return
 			}
 		})

@@ -18,7 +18,7 @@ func Test_articleFromPB(t *testing.T) {
 	body := gentest.RandomString(3)
 	title := gentest.RandomString(3)
 
-	testCases := []struct {
+	tests := []struct {
 		desc string
 		arg  *pb.Article
 		want entity.Article
@@ -44,12 +44,12 @@ func Test_articleFromPB(t *testing.T) {
 		},
 	}
 
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
-			got := articleFromPB(tC.arg)
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			got := articleFromPB(tt.arg)
 
-			if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.Article{})) {
-				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n", got, tC.want)
+			if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(pb.Article{})) {
+				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n", got, tt.want)
 				return
 			}
 		})

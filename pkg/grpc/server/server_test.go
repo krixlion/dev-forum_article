@@ -79,7 +79,7 @@ func Test_Get(t *testing.T) {
 		UpdatedAt: timestamppb.New(v.UpdatedAt),
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		broker  mocks.Broker
 		desc    string
 		arg     *pb.GetArticleRequest
@@ -125,18 +125,18 @@ func Test_Get(t *testing.T) {
 			}(),
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
 
-			client := setUpServer(ctx, tC.storage, tC.broker)
+			client := setUpServer(ctx, tt.storage, tt.broker)
 
 			ctx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
 
-			got, err := client.Get(ctx, tC.arg)
-			if (err != nil) != tC.wantErr {
+			got, err := client.Get(ctx, tt.arg)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Failed to Get article, err: %v", err)
 				return
 			}
@@ -144,9 +144,9 @@ func Test_Get(t *testing.T) {
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
-			if got != tC.want {
-				if !cmp.Equal(got.Article, tC.want.Article, cmpopts.IgnoreUnexported(pb.Article{}, timestamppb.Timestamp{})) {
-					t.Errorf("Articles are not equal:\n Got = %+v\n, want = %+v\n", got.Article, tC.want.Article)
+			if got != tt.want {
+				if !cmp.Equal(got.Article, tt.want.Article, cmpopts.IgnoreUnexported(pb.Article{}, timestamppb.Timestamp{})) {
+					t.Errorf("Articles are not equal:\n Got = %+v\n, want = %+v\n", got.Article, tt.want.Article)
 					return
 				}
 			}
@@ -163,7 +163,7 @@ func Test_Create(t *testing.T) {
 		Body:   v.Body,
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		broker   mocks.Broker
 		desc     string
 		arg      *pb.CreateArticleRequest
@@ -209,29 +209,29 @@ func Test_Create(t *testing.T) {
 			}(),
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tC.storage, tC.broker)
+			client := setUpServer(ctx, tt.storage, tt.broker)
 
-			got, err := client.Create(ctx, tC.arg)
+			got, err := client.Create(ctx, tt.arg)
 			if err != nil {
-				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
+				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
 
-				if !tC.wantErr {
+				if !tt.wantErr {
 					t.Errorf("Failed to Create article, err: %v", err)
 					return
 				}
 			} else {
-				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
+				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
 			}
-			tC.storage.AssertNumberOfCalls(t, "Create", 1)
+			tt.storage.AssertNumberOfCalls(t, "Create", 1)
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
-			if got != tC.dontWant {
+			if got != tt.dontWant {
 				if _, err := uuid.FromString(got.Id); err != nil {
 					t.Errorf("Article ID is not correct UUID:\n ID = %+v\n err = %+v", got.Id, err)
 					return
@@ -250,7 +250,7 @@ func Test_Update(t *testing.T) {
 		Body:   v.Body,
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		broker  mocks.Broker
 		desc    string
 		arg     *pb.UpdateArticleRequest
@@ -294,31 +294,31 @@ func Test_Update(t *testing.T) {
 			}(),
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tC.storage, tC.broker)
+			client := setUpServer(ctx, tt.storage, tt.broker)
 
-			got, err := client.Update(ctx, tC.arg)
+			got, err := client.Update(ctx, tt.arg)
 			if err != nil {
-				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
+				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
 
-				if !tC.wantErr {
+				if !tt.wantErr {
 					t.Errorf("Failed to Update article, err: %v", err)
 					return
 				}
 			} else {
-				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
+				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
 			}
-			tC.storage.AssertNumberOfCalls(t, "Update", 1)
+			tt.storage.AssertNumberOfCalls(t, "Update", 1)
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
-			if got != tC.want {
-				if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.UpdateArticleResponse{})) {
-					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tC.want)
+			if got != tt.want {
+				if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(pb.UpdateArticleResponse{})) {
+					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tt.want)
 					return
 				}
 			}
@@ -335,7 +335,7 @@ func Test_Delete(t *testing.T) {
 		Body:   v.Body,
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		broker  mocks.Broker
 		desc    string
 		arg     *pb.DeleteArticleRequest
@@ -379,31 +379,31 @@ func Test_Delete(t *testing.T) {
 			}(),
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tC.storage, tC.broker)
+			client := setUpServer(ctx, tt.storage, tt.broker)
 
-			got, err := client.Delete(ctx, tC.arg)
+			got, err := client.Delete(ctx, tt.arg)
 			if err != nil {
-				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
+				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 0)
 
-				if !tC.wantErr {
+				if !tt.wantErr {
 					t.Errorf("Failed to Delete article, err: %v", err)
 					return
 				}
 			} else {
-				tC.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
+				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
 			}
-			tC.storage.AssertNumberOfCalls(t, "Delete", 1)
+			tt.storage.AssertNumberOfCalls(t, "Delete", 1)
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
-			if got != tC.want {
-				if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.DeleteArticleResponse{})) {
-					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tC.want)
+			if got != tt.want {
+				if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(pb.DeleteArticleResponse{})) {
+					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tt.want)
 					return
 				}
 			}
@@ -431,7 +431,7 @@ func Test_GetStream(t *testing.T) {
 		pbArticles = append(pbArticles, pbArticle)
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		broker  mocks.Broker
 		desc    string
 		arg     *pb.GetArticlesRequest
@@ -474,30 +474,30 @@ func Test_GetStream(t *testing.T) {
 			}(),
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tC.storage, tC.broker)
+			client := setUpServer(ctx, tt.storage, tt.broker)
 
-			stream, err := client.GetStream(ctx, tC.arg)
+			stream, err := client.GetStream(ctx, tt.arg)
 			if err != nil {
 				t.Errorf("Failed to Get stream, err: %v", err)
 				return
 			}
 
 			var got []*pb.Article
-			for i := 0; i < len(tC.want); i++ {
+			for i := 0; i < len(tt.want); i++ {
 				article, err := stream.Recv()
-				if (err != nil) != tC.wantErr {
+				if (err != nil) != tt.wantErr {
 					t.Errorf("Failed to receive article from stream, err: %v", err)
 					return
 				}
 				got = append(got, article)
 			}
 
-			if !cmp.Equal(got, tC.want, cmpopts.IgnoreUnexported(pb.Article{}, timestamppb.Timestamp{})) {
-				t.Errorf("Articles are not equal:\n Got = %+v\n want = %+v\n", got, tC.want)
+			if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(pb.Article{}, timestamppb.Timestamp{})) {
+				t.Errorf("Articles are not equal:\n Got = %+v\n want = %+v\n", got, tt.want)
 				return
 			}
 		})

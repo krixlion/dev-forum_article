@@ -53,7 +53,7 @@ func Test_GetMultiple(t *testing.T) {
 		offset string
 		limit  string
 	}
-	testCases := []struct {
+	tests := []struct {
 		desc string
 		args args
 		want []entity.Article
@@ -225,22 +225,22 @@ func Test_GetMultiple(t *testing.T) {
 			},
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 			defer cancel()
 
-			got, err := db.GetMultiple(ctx, tC.args.offset, tC.args.limit)
+			got, err := db.GetMultiple(ctx, tt.args.offset, tt.args.limit)
 			if err != nil {
 				t.Errorf("db.GetMultiple() error = %+v\n", err)
 				return
 			}
 
-			if !cmp.Equal(got, tC.want) {
-				t.Errorf("db.GetMultiple():\n got = %+v\n want = %+v\n", got, tC.want)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("db.GetMultiple():\n got = %+v\n want = %+v\n", got, tt.want)
 				return
 			}
 		})
@@ -251,7 +251,7 @@ func Test_Get(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping Get() integration test")
 	}
-	testCases := []struct {
+	tests := []struct {
 		desc    string
 		arg     string
 		want    entity.Article
@@ -287,22 +287,22 @@ func Test_Get(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			got, err := db.Get(ctx, tC.arg)
-			if (err != nil) != tC.wantErr {
-				t.Errorf("db.Get():\n error = %+v wantErr = %+v\n", err, tC.wantErr)
+			got, err := db.Get(ctx, tt.arg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("db.Get():\n error = %+v wantErr = %+v\n", err, tt.wantErr)
 				return
 			}
 
-			if !cmp.Equal(got, tC.want) {
-				t.Errorf("db.Get():\n got = %+v\n want = %+v\n", got, tC.want)
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("db.Get():\n got = %+v\n want = %+v\n", got, tt.want)
 				return
 			}
 		})
@@ -314,7 +314,7 @@ func Test_GetBelongingIDs(t *testing.T) {
 		t.Skip("Skipping Create() integration test")
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		name    string
 		userId  string
 		want    []string
@@ -326,22 +326,22 @@ func Test_GetBelongingIDs(t *testing.T) {
 		// 	want:   []string{},
 		// },
 	}
-	for _, tC := range testCases {
-		t.Run(tC.name, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			got, err := db.GetBelongingIDs(ctx, tC.userId)
+			got, err := db.GetBelongingIDs(ctx, tt.userId)
 
-			if (err != nil) != tC.wantErr {
-				t.Errorf("db.GetBelongingIDs() error = %+v\n, wantErr %+v\n", err, tC.wantErr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("db.GetBelongingIDs() error = %+v\n, wantErr %+v\n", err, tt.wantErr)
 				return
 			}
-			if !cmp.Equal(got, tC.want) {
-				t.Errorf("db.GetBelongingIDs() = %+v\n want %+v\n diff = %+v\n", got, tC.want, cmp.Diff(got, tC.want))
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("db.GetBelongingIDs() = %+v\n want %+v\n diff = %+v\n", got, tt.want, cmp.Diff(got, tt.want))
 				return
 			}
 		})
@@ -353,7 +353,7 @@ func Test_Create(t *testing.T) {
 		t.Skip("Skipping Create() integration test")
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		desc    string
 		arg     entity.Article
 		wantErr bool
@@ -382,28 +382,28 @@ func Test_Create(t *testing.T) {
 			},
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			err := db.Create(ctx, tC.arg)
-			if (err != nil) != tC.wantErr {
+			err := db.Create(ctx, tt.arg)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("db.Create() error = %+v", err)
 				return
 			}
 
-			got, err := db.Get(ctx, tC.arg.Id)
+			got, err := db.Get(ctx, tt.arg.Id)
 			if err != nil {
-				t.Errorf("db.Create() failed to db.Get() article:\n error = %+v\n wantErr = %+v\n", err, tC.wantErr)
+				t.Errorf("db.Create() failed to db.Get() article:\n error = %+v\n wantErr = %+v\n", err, tt.wantErr)
 				return
 			}
 
-			if !cmp.Equal(got, tC.arg) {
-				t.Errorf("db.Create():\n got = %+v\n want = %+v\n", got, tC.arg)
+			if !cmp.Equal(got, tt.arg) {
+				t.Errorf("db.Create():\n got = %+v\n want = %+v\n", got, tt.arg)
 				return
 			}
 		})
@@ -414,7 +414,7 @@ func Test_Update(t *testing.T) {
 		t.Skip("Skipping Update() integration test")
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		desc    string
 		arg     entity.Article
 		wantErr bool
@@ -467,28 +467,28 @@ func Test_Update(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			err := db.Update(ctx, tC.arg)
-			if (err != nil) != tC.wantErr {
-				t.Errorf("db.Update():\n error = %+v wantErr = %+v\n", err, tC.wantErr)
+			err := db.Update(ctx, tt.arg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("db.Update():\n error = %+v wantErr = %+v\n", err, tt.wantErr)
 				return
 			}
 
-			got, err := db.Get(ctx, tC.arg.Id)
-			if (err != nil) != tC.wantErr {
+			got, err := db.Get(ctx, tt.arg.Id)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("db.Update() failed to db.Get() article:\n error = %+v\n", err)
 				return
 			}
 
-			if !cmp.Equal(got, tC.arg) && !tC.wantErr {
-				t.Errorf("db.Update():\n got = %+v\n want = %+v\n", got, tC.arg)
+			if !cmp.Equal(got, tt.arg) && !tt.wantErr {
+				t.Errorf("db.Update():\n got = %+v\n want = %+v\n", got, tt.arg)
 				return
 			}
 		})
@@ -500,7 +500,7 @@ func Test_Delete(t *testing.T) {
 		t.Skip("Skipping Delete() integration test")
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		desc string
 		arg  string
 	}{
@@ -509,21 +509,21 @@ func Test_Delete(t *testing.T) {
 			arg:  "test",
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			err := db.Delete(ctx, tC.arg)
+			err := db.Delete(ctx, tt.arg)
 			if err != nil {
 				t.Errorf("db.Delete() error = %+v", err)
 				return
 			}
 
-			_, err = db.Get(ctx, tC.arg)
+			_, err = db.Get(ctx, tt.arg)
 			if err == nil {
 				t.Errorf("db.Get() after db.Delete() returned nil error.")
 				return

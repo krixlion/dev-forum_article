@@ -51,7 +51,7 @@ func Test_Create(t *testing.T) {
 		ctx     context.Context
 		article entity.Article
 	}
-	testCases := []struct {
+	tests := []struct {
 		desc    string
 		args    args
 		wantErr bool
@@ -68,20 +68,20 @@ func Test_Create(t *testing.T) {
 			},
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
-			if err := db.Create(tC.args.ctx, tC.args.article); (err != nil) != tC.wantErr {
-				t.Errorf("DB.Create() error = %v\n, wantErr %v\n", err, tC.args.article)
+			if err := db.Create(tt.args.ctx, tt.args.article); (err != nil) != tt.wantErr {
+				t.Errorf("DB.Create() error = %v\n, wantErr %v\n", err, tt.args.article)
 			}
 			opts := esdb.ReadStreamOptions{
 				Direction: esdb.Backwards,
 				From:      esdb.End{},
 			}
 
-			stream, err := db.client.ReadStream(tC.args.ctx, addArticlesPrefix(tC.args.article.Id), opts, 1)
+			stream, err := db.client.ReadStream(tt.args.ctx, addArticlesPrefix(tt.args.article.Id), opts, 1)
 			if err != nil {
 				t.Errorf("Failed to read stream:\n error = %+v\n", err)
 				return
@@ -109,8 +109,8 @@ func Test_Create(t *testing.T) {
 				return
 			}
 
-			if !cmp.Equal(tC.args.article, got) {
-				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n %v\n", got, tC.args.article, cmp.Diff(got, tC.args.article))
+			if !cmp.Equal(tt.args.article, got) {
+				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n %v\n", got, tt.args.article, cmp.Diff(got, tt.args.article))
 				return
 			}
 		})
@@ -126,7 +126,7 @@ func Test_Update(t *testing.T) {
 		ctx     context.Context
 		article entity.Article
 	}
-	testCases := []struct {
+	tests := []struct {
 		desc    string
 		args    args
 		wantErr bool
@@ -143,13 +143,13 @@ func Test_Update(t *testing.T) {
 			},
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
-			if err := db.Update(tC.args.ctx, tC.args.article); (err != nil) != tC.wantErr {
-				t.Errorf("DB.Update() error = %v\n, wantErr %v\n", err, tC.wantErr)
+			if err := db.Update(tt.args.ctx, tt.args.article); (err != nil) != tt.wantErr {
+				t.Errorf("DB.Update() error = %v\n, wantErr %v\n", err, tt.wantErr)
 			}
 
 			opts := esdb.ReadStreamOptions{
@@ -157,7 +157,7 @@ func Test_Update(t *testing.T) {
 				From:      esdb.End{},
 			}
 
-			stream, err := db.client.ReadStream(tC.args.ctx, addArticlesPrefix(tC.args.article.Id), opts, 1)
+			stream, err := db.client.ReadStream(tt.args.ctx, addArticlesPrefix(tt.args.article.Id), opts, 1)
 			if err != nil {
 				t.Errorf("Failed to read stream:\n error = %+v\n", err)
 				return
@@ -185,8 +185,8 @@ func Test_Update(t *testing.T) {
 				return
 			}
 
-			if !cmp.Equal(tC.args.article, got) {
-				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n %v\n", got, tC.args.article, cmp.Diff(got, tC.args.article))
+			if !cmp.Equal(tt.args.article, got) {
+				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n %v\n", got, tt.args.article, cmp.Diff(got, tt.args.article))
 				return
 			}
 		})
@@ -202,7 +202,7 @@ func Test_Delete(t *testing.T) {
 		ctx context.Context
 		id  string
 	}
-	testCases := []struct {
+	tests := []struct {
 		desc    string
 		args    args
 		wantErr bool
@@ -215,13 +215,13 @@ func Test_Delete(t *testing.T) {
 			},
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
-			if err := db.Delete(tC.args.ctx, tC.args.id); (err != nil) != tC.wantErr {
-				t.Errorf("DB.Delete() error = %v\n, wantErr %v\n", err, tC.wantErr)
+			if err := db.Delete(tt.args.ctx, tt.args.id); (err != nil) != tt.wantErr {
+				t.Errorf("DB.Delete() error = %v\n, wantErr %v\n", err, tt.wantErr)
 			}
 
 			opts := esdb.ReadStreamOptions{
@@ -229,7 +229,7 @@ func Test_Delete(t *testing.T) {
 				From:      esdb.End{},
 			}
 
-			stream, err := db.client.ReadStream(tC.args.ctx, addArticlesPrefix(tC.args.id), opts, 1)
+			stream, err := db.client.ReadStream(tt.args.ctx, addArticlesPrefix(tt.args.id), opts, 1)
 			if err != nil {
 				t.Errorf("Failed to read stream:\n error = %+v\n", err)
 				return
@@ -257,8 +257,8 @@ func Test_Delete(t *testing.T) {
 				return
 			}
 
-			if !cmp.Equal(tC.args.id, got) {
-				t.Errorf("IDs are not equal:\n got = %+v\n want = %+v\n", got, tC.args.id)
+			if !cmp.Equal(tt.args.id, got) {
+				t.Errorf("IDs are not equal:\n got = %+v\n want = %+v\n", got, tt.args.id)
 				return
 			}
 		})
@@ -266,7 +266,7 @@ func Test_Delete(t *testing.T) {
 }
 
 func Test_lastRevision(t *testing.T) {
-	testCases := []struct {
+	tests := []struct {
 		desc    string
 		article entity.Article
 		wantErr bool
@@ -276,24 +276,24 @@ func Test_lastRevision(t *testing.T) {
 			article: gentest.RandomArticle(5, 5),
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 			defer cancel()
 
-			if err := db.Create(ctx, tC.article); err != nil {
+			if err := db.Create(ctx, tt.article); err != nil {
 				t.Errorf("DB.lastRevision() error during prep = %v", err)
 				return
 			}
 
-			want := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, tC.article)
+			want := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, tt.article)
 
-			resEvent, err := db.lastRevision(ctx, tC.article.Id)
-			if (err != nil) != tC.wantErr {
-				t.Errorf("DB.lastRevision() error = %v, wantErr %v", err, tC.wantErr)
+			resEvent, err := db.lastRevision(ctx, tt.article.Id)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DB.lastRevision() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 

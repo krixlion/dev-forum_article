@@ -18,7 +18,7 @@ func Test_Consume(t *testing.T) {
 		t.Skip("Skipping Consume() integration test.")
 	}
 
-	testCases := []struct {
+	tests := []struct {
 		desc    string
 		eType   event.EventType
 		want    event.Event
@@ -77,35 +77,35 @@ func Test_Consume(t *testing.T) {
 			},
 		},
 	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 			defer cancel()
 
-			stream, err := db.Consume(ctx, "", tC.eType)
-			if (err != nil) != tC.wantErr {
-				t.Errorf("DB.Consume():\n error = %v\n, wantErr %v\n", err, tC.wantErr)
+			stream, err := db.Consume(ctx, "", tt.eType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DB.Consume():\n error = %v\n, wantErr %v\n", err, tt.wantErr)
 				return
 			}
 
 			var article entity.Article
 			var id string
-			if tC.want.Type != event.ArticleDeleted {
-				err = json.Unmarshal(tC.want.Body, &article)
+			if tt.want.Type != event.ArticleDeleted {
+				err = json.Unmarshal(tt.want.Body, &article)
 				if err != nil {
 					t.Errorf("Failed to unmarshal random JSON article:\n error = %+v\n", err)
 				}
 			} else {
-				err = json.Unmarshal(tC.want.Body, &id)
+				err = json.Unmarshal(tt.want.Body, &id)
 				if err != nil {
 					t.Errorf("Failed to unmarshal random JSON id:\n error = %+v\n", err)
 				}
 			}
 
-			switch tC.want.Type {
+			switch tt.want.Type {
 			case event.ArticleCreated:
 				err = db.Create(ctx, article)
 			case event.ArticleDeleted:
@@ -115,13 +115,13 @@ func Test_Consume(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Errorf("Failed to emit %s event:\n error = %+v\n", tC.want.Type, err)
+				t.Errorf("Failed to emit %s event:\n error = %+v\n", tt.want.Type, err)
 			}
 
 			select {
 			case got := <-stream:
-				if !cmp.Equal(got, tC.want, cmpopts.EquateApproxTime(time.Second*2)) {
-					t.Errorf("DB.Consume():\n got = %v\n want = %v\n Difference =  %s\n", got, tC.want, cmp.Diff(got, tC.want))
+				if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second*2)) {
+					t.Errorf("DB.Consume():\n got = %v\n want = %v\n Difference =  %s\n", got, tt.want, cmp.Diff(got, tt.want))
 				}
 			case <-ctx.Done():
 				t.Error("Timed out waiting for an event")
