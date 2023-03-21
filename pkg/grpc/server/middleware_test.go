@@ -9,15 +9,17 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
+	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/mocks"
 	"github.com/krixlion/dev_forum-lib/nulls"
-	"github.com/krixlion/dev_forum-proto/article_service/pb"
-	userPb "github.com/krixlion/dev_forum-proto/user_service/pb"
+	userMock "github.com/krixlion/dev_forum-user/pkg/grpc/mocks"
+	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func setUpServer(ctx context.Context, db storage.CQRStorage, userClient userPb.UserServiceClient, mq event.Broker) ArticleServer {
@@ -39,7 +41,7 @@ func Test_validateCreate(t *testing.T) {
 		storage    mocks.CQRStorage[entity.Article]
 		broker     mocks.Broker
 		handler    mocks.UnaryHandler
-		userClient mocks.UserClient
+		userClient userMock.UserClient
 		req        *pb.CreateArticleRequest
 		want       *pb.CreateArticleResponse
 		wantErr    bool
@@ -51,8 +53,8 @@ func Test_validateCreate(t *testing.T) {
 				m.On("", mock.Anything).Return().Once()
 				return m
 			}(),
-			userClient: func() mocks.UserClient {
-				m := mocks.NewUserClient()
+			userClient: func() userMock.UserClient {
+				m := userMock.NewUserClient()
 				m.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(&userPb.GetUserResponse{}, errors.New("test err")).Once()
 				return m
 			}(),
@@ -99,9 +101,9 @@ func Test_validateUpdate(t *testing.T) {
 		storage    mocks.CQRStorage[entity.Article]
 		handler    mocks.UnaryHandler
 		broker     mocks.Broker
-		userClient mocks.UserClient
+		userClient userMock.UserClient
 		req        *pb.UpdateArticleRequest
-		want       *pb.UpdateArticleResponse
+		want       *emptypb.Empty
 		wantErr    bool
 	}{
 		{
@@ -110,7 +112,7 @@ func Test_validateUpdate(t *testing.T) {
 				m := mocks.NewUnaryHandler()
 				return m
 			}(),
-			userClient: mocks.NewUserClient(),
+			userClient: userMock.NewUserClient(),
 			storage: func() mocks.CQRStorage[entity.Article] {
 				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
@@ -149,7 +151,7 @@ func Test_validateDelete(t *testing.T) {
 		storage    mocks.CQRStorage[entity.Article]
 		handler    mocks.UnaryHandler
 		broker     mocks.Broker
-		userClient mocks.UserClient
+		userClient userMock.UserClient
 		req        *pb.DeleteArticleRequest
 		wantErr    bool
 	}{
@@ -160,8 +162,8 @@ func Test_validateDelete(t *testing.T) {
 				m.On("", mock.Anything).Return().Once()
 				return m
 			}(),
-			userClient: func() mocks.UserClient {
-				m := mocks.NewUserClient()
+			userClient: func() userMock.UserClient {
+				m := userMock.NewUserClient()
 				resp := &userPb.GetUserResponse{
 					User: &userPb.User{},
 				}

@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/gofrs/uuid"
+	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-lib/tracing"
-	"github.com/krixlion/dev_forum-proto/article_service/pb"
-	userPb "github.com/krixlion/dev_forum-proto/user_service/pb"
+	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

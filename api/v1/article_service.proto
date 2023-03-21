@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package article;
+
+option go_package="github.com/krixlion/dev_forum-article/pkg/grpc/v1;pb";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service ArticleService {
+    rpc Create(CreateArticleRequest) returns (CreateArticleResponse) {}
+    rpc Update(UpdateArticleRequest) returns (google.protobuf.Empty) {}
+    rpc Delete(DeleteArticleRequest) returns (google.protobuf.Empty) {}
+    rpc Get(GetArticleRequest) returns (GetArticleResponse) {}
+    rpc GetStream(GetArticlesRequest) returns (stream Article) {}
+} 
+
+message Article {
+    string id = 1;
+    string user_id = 2;
+    string title = 4;
+    string body = 3;
+    google.protobuf.Timestamp created_at = 5;
+    google.protobuf.Timestamp updated_at = 6;
+}
+
+message CreateArticleRequest {
+    Article article = 1;
+}
+
+message CreateArticleResponse {
+    string id = 1 ;
+}
+
+message UpdateArticleRequest {
+    Article article = 1;
+}
+
+message DeleteArticleRequest {
+    string id = 1;
+}
+
+message GetArticleRequest {
+    string id = 1;
+}
+
+message GetArticlesRequest {
+    string offset = 1;
+    string limit = 2;
+}
+
+message GetArticleResponse {
+    Article article = 1;
+}

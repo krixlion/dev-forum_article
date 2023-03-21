@@ -11,12 +11,13 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/krixlion/dev_forum-proto/article_service/pb"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/krixlion/dev_forum-article/pkg/entity"
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
+	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/mocks"
 	"github.com/krixlion/dev_forum-lib/nulls"
@@ -24,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -254,7 +256,7 @@ func Test_Update(t *testing.T) {
 		broker  mocks.Broker
 		desc    string
 		arg     *pb.UpdateArticleRequest
-		want    *pb.UpdateArticleResponse
+		want    *emptypb.Empty
 		wantErr bool
 		storage mocks.CQRStorage[entity.Article]
 	}{
@@ -263,7 +265,7 @@ func Test_Update(t *testing.T) {
 			arg: &pb.UpdateArticleRequest{
 				Article: article,
 			},
-			want: &pb.UpdateArticleResponse{},
+			want: &emptypb.Empty{},
 			storage: func() mocks.CQRStorage[entity.Article] {
 				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
@@ -317,7 +319,7 @@ func Test_Update(t *testing.T) {
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if got != tt.want {
-				if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(pb.UpdateArticleResponse{})) {
+				if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(emptypb.Empty{})) {
 					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tt.want)
 					return
 				}
@@ -339,7 +341,7 @@ func Test_Delete(t *testing.T) {
 		broker  mocks.Broker
 		desc    string
 		arg     *pb.DeleteArticleRequest
-		want    *pb.DeleteArticleResponse
+		want    *emptypb.Empty
 		wantErr bool
 		storage mocks.CQRStorage[entity.Article]
 	}{
@@ -348,7 +350,7 @@ func Test_Delete(t *testing.T) {
 			arg: &pb.DeleteArticleRequest{
 				Id: article.Id,
 			},
-			want: &pb.DeleteArticleResponse{},
+			want: &emptypb.Empty{},
 			storage: func() mocks.CQRStorage[entity.Article] {
 				m := mocks.NewCQRStorage[entity.Article]()
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(nil).Times(1)
@@ -402,7 +404,7 @@ func Test_Delete(t *testing.T) {
 			// Equals false if both are nil or they point to the same memory address
 			// so be sure to use seperate structs when providing args in order to prevent SEGV.
 			if got != tt.want {
-				if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(pb.DeleteArticleResponse{})) {
+				if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(emptypb.Empty{})) {
 					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tt.want)
 					return
 				}

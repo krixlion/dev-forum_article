@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-proto/article_service/pb"
+	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 )
 
 func articleFromPB(v *pb.Article) entity.Article {

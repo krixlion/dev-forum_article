@@ -6,16 +6,17 @@ import (
 	"fmt"
 	"time"
 
+	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/logging"
-	"github.com/krixlion/dev_forum-proto/article_service/pb"
-	userPb "github.com/krixlion/dev_forum-proto/user_service/pb"
+	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"go.opentelemetry.io/otel/trace"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -82,7 +83,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	}, nil
 }
 
-func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (*pb.DeleteArticleResponse, error) {
+func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (*emptypb.Empty, error) {
 	ctx, span := s.tracer.Start(ctx, "server.Delete")
 	defer span.End()
 
@@ -97,10 +98,10 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 
 	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id))
 
-	return &pb.DeleteArticleResponse{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (*pb.UpdateArticleResponse, error) {
+func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (*emptypb.Empty, error) {
 	ctx, span := s.tracer.Start(ctx, "server.Update")
 	defer span.End()
 
@@ -115,7 +116,7 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 
 	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article))
 
-	return &pb.UpdateArticleResponse{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.GetArticleResponse, error) {
