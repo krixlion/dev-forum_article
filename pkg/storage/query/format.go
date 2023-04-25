@@ -3,11 +3,10 @@ package query
 import (
 	"fmt"
 	"reflect"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/krixlion/dev_forum-article/pkg/entity"
+	"github.com/krixlion/dev_forum-lib/str"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -50,15 +49,6 @@ func addPrefix(prefix, key string) string {
 	return fmt.Sprintf("%s:%s", prefix, key)
 }
 
-func toLowerSnakeCase(str string) string {
-	matchFirstCap := regexp.MustCompile("(.)([A-Z][a-z]+)")
-	matchAllCap := regexp.MustCompile("([a-z0-9])([A-Z])")
-
-	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
-	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
-	return strings.ToLower(snake)
-}
-
 // mapArticle converts an article to a map. Formats time.Time fields to RFC3339.
 func mapArticle(article entity.Article) map[string]string {
 	v := reflect.ValueOf(article)
@@ -67,7 +57,7 @@ func mapArticle(article entity.Article) map[string]string {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fType := field.Type()
-		fieldName := toLowerSnakeCase(v.Type().Field(i).Name)
+		fieldName := str.ToLowerSnakeCase(v.Type().Field(i).Name)
 
 		// Format time.Time fields to RFC3339.
 		// Redis-go doesn't support time.Time fields scanning.
