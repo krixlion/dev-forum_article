@@ -76,7 +76,14 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article))
+	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	if err := s.dispatcher.ResilientPublish(event); err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
 
 	return &pb.CreateArticleResponse{
 		Id: article.Id,
@@ -96,7 +103,14 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id))
+	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	if err := s.dispatcher.ResilientPublish(event); err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
 
 	return &emptypb.Empty{}, nil
 }
@@ -114,7 +128,14 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	s.dispatcher.Publish(event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article))
+	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	if err := s.dispatcher.ResilientPublish(event); err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
 
 	return &emptypb.Empty{}, nil
 }

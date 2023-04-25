@@ -17,6 +17,7 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-article/pkg/storage/storagemocks"
 
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/mocks"
@@ -33,7 +34,7 @@ import (
 // server allowing only for local calls for testing.
 // Returns a client to interact with the server.
 // The server is shutdown when ctx.Done() receives.
-func setUpServer(ctx context.Context, storage mocks.CQRStorage[entity.Article], broker mocks.Broker) pb.ArticleServiceClient {
+func setUpServer(ctx context.Context, storage storagemocks.CQRStorage, broker mocks.Broker) pb.ArticleServiceClient {
 	// bufconn allows the server to call itself
 	// great for testing across whole infrastructure
 	lis := bufconn.Listen(1024 * 1024)
@@ -87,7 +88,7 @@ func Test_Get(t *testing.T) {
 		arg     *pb.GetArticleRequest
 		want    *pb.GetArticleResponse
 		wantErr bool
-		storage mocks.CQRStorage[entity.Article]
+		storage storagemocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -97,8 +98,8 @@ func Test_Get(t *testing.T) {
 			want: &pb.GetArticleResponse{
 				Article: article,
 			},
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(v, nil).Times(1)
 				return m
 			}(),
@@ -115,8 +116,8 @@ func Test_Get(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -171,7 +172,7 @@ func Test_Create(t *testing.T) {
 		arg      *pb.CreateArticleRequest
 		dontWant *pb.CreateArticleResponse
 		wantErr  bool
-		storage  mocks.CQRStorage[entity.Article]
+		storage  storagemocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -181,8 +182,8 @@ func Test_Create(t *testing.T) {
 			dontWant: &pb.CreateArticleResponse{
 				Id: article.Id,
 			},
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
 				return m
 			}(),
@@ -199,8 +200,8 @@ func Test_Create(t *testing.T) {
 			},
 			dontWant: nil,
 			wantErr:  true,
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -258,7 +259,7 @@ func Test_Update(t *testing.T) {
 		arg     *pb.UpdateArticleRequest
 		want    *emptypb.Empty
 		wantErr bool
-		storage mocks.CQRStorage[entity.Article]
+		storage storagemocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -266,8 +267,8 @@ func Test_Update(t *testing.T) {
 				Article: article,
 			},
 			want: &emptypb.Empty{},
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
 				return m
 			}(),
@@ -284,8 +285,8 @@ func Test_Update(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -343,7 +344,7 @@ func Test_Delete(t *testing.T) {
 		arg     *pb.DeleteArticleRequest
 		want    *emptypb.Empty
 		wantErr bool
-		storage mocks.CQRStorage[entity.Article]
+		storage storagemocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -351,8 +352,8 @@ func Test_Delete(t *testing.T) {
 				Id: article.Id,
 			},
 			want: &emptypb.Empty{},
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(nil).Times(1)
 				return m
 			}(),
@@ -369,8 +370,8 @@ func Test_Delete(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -439,7 +440,7 @@ func Test_GetStream(t *testing.T) {
 		arg     *pb.GetArticlesRequest
 		want    []*pb.Article
 		wantErr bool
-		storage mocks.CQRStorage[entity.Article]
+		storage storagemocks.CQRStorage
 	}{
 		{
 			desc: "Test if response is returned properly on simple request",
@@ -448,8 +449,8 @@ func Test_GetStream(t *testing.T) {
 				Limit:  "5",
 			},
 			want: pbArticles,
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(articles, nil).Times(1)
 				return m
 			}(),
@@ -464,8 +465,8 @@ func Test_GetStream(t *testing.T) {
 			arg:     &pb.GetArticlesRequest{},
 			want:    nil,
 			wantErr: true,
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return([]entity.Article{}, errors.New("test err")).Times(1)
 				return m
 			}(),

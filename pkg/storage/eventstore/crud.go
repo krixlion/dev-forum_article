@@ -20,7 +20,10 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Create")
 	defer span.End()
 
-	e := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article)
+	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article)
+	if err != nil {
+		return err
+	}
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
@@ -47,7 +50,11 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Update")
 	defer span.End()
 
-	e := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article)
+	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article)
+	if err != nil {
+		return err
+	}
+
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
@@ -83,7 +90,11 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Delete")
 	defer span.End()
 
-	e := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id)
+	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id)
+	if err != nil {
+		return err
+	}
+
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)

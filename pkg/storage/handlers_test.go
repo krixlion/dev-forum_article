@@ -62,16 +62,22 @@ func TestManager_DeleteUsersArticles(t *testing.T) {
 	}
 
 	tests := []struct {
-		desc string
+		name string
 		want event.Event
 	}{
 		{
-			desc: "",
-			want: event.MakeEvent(event.UserAggregate, event.UserDeleted, "10"),
+			name: "Test if everything is called as anticipated",
+			want: func() event.Event {
+				event, err := event.MakeEvent(event.UserAggregate, event.UserDeleted, "10")
+				if err != nil {
+					panic(err)
+				}
+				return event
+			}(),
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 
 			db, d := setUpDBAndDispatcher()
 			d.Subscribe(tt.want.Type, db.DeleteUsersArticles())

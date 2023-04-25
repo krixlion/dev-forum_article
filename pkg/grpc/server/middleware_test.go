@@ -12,6 +12,7 @@ import (
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
+	"github.com/krixlion/dev_forum-article/pkg/storage/storagemocks"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/mocks"
@@ -38,7 +39,7 @@ func setUpServer(ctx context.Context, db storage.CQRStorage, userClient userPb.U
 func Test_validateCreate(t *testing.T) {
 	tests := []struct {
 		name       string
-		storage    mocks.CQRStorage[entity.Article]
+		storage    storagemocks.CQRStorage
 		broker     mocks.Broker
 		handler    mocks.UnaryHandler
 		userClient userMock.UserClient
@@ -58,8 +59,8 @@ func Test_validateCreate(t *testing.T) {
 				m.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(&userPb.GetUserResponse{}, errors.New("test err")).Once()
 				return m
 			}(),
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Create", mock.Anything).Return(nil).Once()
 				return m
 			}(),
@@ -98,7 +99,7 @@ func Test_validateCreate(t *testing.T) {
 func Test_validateUpdate(t *testing.T) {
 	tests := []struct {
 		name       string
-		storage    mocks.CQRStorage[entity.Article]
+		storage    storagemocks.CQRStorage
 		handler    mocks.UnaryHandler
 		broker     mocks.Broker
 		userClient userMock.UserClient
@@ -113,8 +114,8 @@ func Test_validateUpdate(t *testing.T) {
 				return m
 			}(),
 			userClient: userMock.NewUserClient(),
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
 				return m
 			}(),
@@ -148,7 +149,7 @@ func Test_validateUpdate(t *testing.T) {
 func Test_validateDelete(t *testing.T) {
 	tests := []struct {
 		name       string
-		storage    mocks.CQRStorage[entity.Article]
+		storage    storagemocks.CQRStorage
 		handler    mocks.UnaryHandler
 		broker     mocks.Broker
 		userClient userMock.UserClient
@@ -170,8 +171,8 @@ func Test_validateDelete(t *testing.T) {
 				m.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(resp, nil).Once()
 				return m
 			}(),
-			storage: func() mocks.CQRStorage[entity.Article] {
-				m := mocks.NewCQRStorage[entity.Article]()
+			storage: func() storagemocks.CQRStorage {
+				m := storagemocks.NewCQRStorage()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, errors.New("not found")).Once()
 				return m
 			}(),

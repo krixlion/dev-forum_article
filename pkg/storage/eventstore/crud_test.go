@@ -289,7 +289,11 @@ func Test_lastRevision(t *testing.T) {
 				return
 			}
 
-			want := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, tt.article)
+			want, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, tt.article)
+			if err != nil {
+				t.Errorf("DB.lastRevision() error during prep = %v", err)
+				return
+			}
 
 			resEvent, err := db.lastRevision(ctx, tt.article.Id)
 			if (err != nil) != tt.wantErr {
