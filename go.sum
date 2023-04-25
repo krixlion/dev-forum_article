@@ -207,10 +207,6 @@ github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfn
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/krixlion/dev_forum-lib v0.0.0-20230425124204-baec7abeea29 h1:EIHR0yFHw5+Ea4kpXFBI1prgPvzV7VHUUr/rwUAbo4o=
-github.com/krixlion/dev_forum-lib v0.0.0-20230425124204-baec7abeea29/go.mod h1:HwgsH9J7urMBq7zfZwiHe9Ts9Qhpla5GoTG2pJIp9HQ=
-github.com/krixlion/dev_forum-lib v0.0.0-20230425132818-548715faf18b h1:+WaLQDP7hCRvzEw13lwwDL98XO8t1Z/pkeMcHAq3vX0=
-github.com/krixlion/dev_forum-lib v0.0.0-20230425132818-548715faf18b/go.mod h1:HwgsH9J7urMBq7zfZwiHe9Ts9Qhpla5GoTG2pJIp9HQ=
 github.com/krixlion/dev_forum-lib v0.0.0-20230425134625-5d6a852230b0 h1:gUnzChpNwe16Mty/VHTHcvTfqJgEX/VzL70R7qvDi5Y=
 github.com/krixlion/dev_forum-lib v0.0.0-20230425134625-5d6a852230b0/go.mod h1:HwgsH9J7urMBq7zfZwiHe9Ts9Qhpla5GoTG2pJIp9HQ=
 github.com/krixlion/dev_forum-rabbitmq v0.0.0-20230212211448-d0b71a52cf4b h1:UuSJl4e/EkfxZgPfArQ9s5G1vehXlI9JDFmWeo83dL4=
