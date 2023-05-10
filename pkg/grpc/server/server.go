@@ -8,6 +8,8 @@ import (
 
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
+	authPb "github.com/krixlion/dev_forum-auth/pkg/grpc/v1"
+	"github.com/krixlion/dev_forum-auth/pkg/tokens"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/logging"
@@ -22,32 +24,36 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	services   Services
-	storage    storage.CQRStorage
-	dispatcher *dispatcher.Dispatcher
-	logger     logging.Logger
-	tracer     trace.Tracer
+	services       Services
+	storage        storage.CQRStorage
+	dispatcher     *dispatcher.Dispatcher
+	tokenValidator tokens.Validator
+	logger         logging.Logger
+	tracer         trace.Tracer
 }
 
 type Dependencies struct {
 	Services   Services
 	Storage    storage.CQRStorage
 	Dispatcher *dispatcher.Dispatcher
+	Validator  tokens.Validator
 	Logger     logging.Logger
 	Tracer     trace.Tracer
 }
 
 type Services struct {
 	User userPb.UserServiceClient
+	Auth authPb.AuthServiceClient
 }
 
 func NewArticleServer(d Dependencies) ArticleServer {
 	return ArticleServer{
-		services:   d.Services,
-		storage:    d.Storage,
-		dispatcher: d.Dispatcher,
-		logger:     d.Logger,
-		tracer:     d.Tracer,
+		services:       d.Services,
+		storage:        d.Storage,
+		dispatcher:     d.Dispatcher,
+		tokenValidator: d.Validator,
+		logger:         d.Logger,
+		tracer:         d.Tracer,
 	}
 }
 

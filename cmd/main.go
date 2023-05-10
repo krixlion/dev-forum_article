@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
@@ -16,6 +17,8 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-article/pkg/storage/eventstore"
 	"github.com/krixlion/dev_forum-article/pkg/storage/query"
+	authPb "github.com/krixlion/dev_forum-auth/pkg/grpc/v1"
+	"github.com/krixlion/dev_forum-auth/pkg/tokens/validator"
 	"github.com/krixlion/dev_forum-lib/env"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/broker"
@@ -24,6 +27,7 @@ import (
 	"github.com/krixlion/dev_forum-lib/tracing"
 	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
+	"github.com/lestrrat-go/jwx/jwt"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
@@ -53,7 +57,7 @@ func main() {
 		logging.Log("Failed to initialize tracing", "err", err)
 	}
 
-	service := service.NewArticleService(port, getServiceDependencies())
+	service := service.NewArticleService(port, getServiceDependencies(ctx))
 	service.Run(ctx)
 
 	<-ctx.Done()
@@ -73,7 +77,7 @@ func main() {
 
 // getServiceDependencies is a Composition root.
 // Panics on any non-nil error.
-func getServiceDependencies() service.Dependencies {
+func getServiceDependencies(ctx context.Context) service.Dependencies {
 	tracer := otel.Tracer(serviceName)
 
 	logger, err := logging.NewLogger()
@@ -132,7 +136,7 @@ func getServiceDependencies() service.Dependencies {
 		dispatcher.Subscribe(eType, handlers...)
 	}
 
-	conn, err := grpc.Dial("user-service:50051",
+	userConn, err := grpc.Dial("user-service:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(
 			otelgrpc.UnaryClientInterceptor(),
@@ -141,12 +145,40 @@ func getServiceDependencies() service.Dependencies {
 	if err != nil {
 		panic(err)
 	}
-	userClient := userPb.NewUserServiceClient(conn)
+	userClient := userPb.NewUserServiceClient(userConn)
+
+	authConn, err := grpc.Dial("auth-service:50053",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(
+			otelgrpc.UnaryClientInterceptor(),
+		),
+	)
+	if err != nil {
+		panic(err)
+	}
+	authClient := authPb.NewAuthServiceClient(authConn)
+
+	tokenValidator, err := validator.NewValidator(validator.Config{
+		Issuer:      "http://auth-service",
+		Clock:       jwt.ClockFunc(time.Now),
+		RefreshFunc: validator.DefaultRefreshFunc(authClient),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		if tokenValidator.Run(ctx); err != nil {
+			panic(err)
+		}
+	}()
 
 	articleServer := server.NewArticleServer(server.Dependencies{
 		Services: server.Services{
 			User: userClient,
+			Auth: authClient,
 		},
+		Validator:  tokenValidator,
 		Storage:    storage,
 		Dispatcher: dispatcher,
 		Logger:     logger,
@@ -158,6 +190,7 @@ func getServiceDependencies() service.Dependencies {
 			otelgrpc.StreamServerInterceptor(),
 		),
 		grpc.ChainUnaryInterceptor(
+			grpc_auth.UnaryServerInterceptor(articleServer.AuthFunc),
 			grpc_recovery.UnaryServerInterceptor(),
 			grpc_zap.UnaryServerInterceptor(zap.L()),
 			otelgrpc.UnaryServerInterceptor(),
@@ -173,11 +206,10 @@ func getServiceDependencies() service.Dependencies {
 		Broker:     broker,
 		GRPCServer: grpcServer,
 		SyncEvents: &cmd,
-		Storage:    storage,
 		Dispatcher: dispatcher,
 		ShutdownFunc: func() error {
 			grpcServer.GracefulStop()
-			conn.Close()
+			userConn.Close()
 			return articleServer.Close()
 		},
 	}
