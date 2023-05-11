@@ -12,7 +12,6 @@ import (
 	"github.com/krixlion/dev_forum-auth/pkg/tokens"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
-	"github.com/krixlion/dev_forum-lib/logging"
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"go.opentelemetry.io/otel/trace"
 
@@ -28,7 +27,6 @@ type ArticleServer struct {
 	storage        storage.CQRStorage
 	dispatcher     *dispatcher.Dispatcher
 	tokenValidator tokens.Validator
-	logger         logging.Logger
 	tracer         trace.Tracer
 }
 
@@ -37,7 +35,6 @@ type Dependencies struct {
 	Storage    storage.CQRStorage
 	Dispatcher *dispatcher.Dispatcher
 	Validator  tokens.Validator
-	Logger     logging.Logger
 	Tracer     trace.Tracer
 }
 
@@ -52,7 +49,6 @@ func NewArticleServer(d Dependencies) ArticleServer {
 		storage:        d.Storage,
 		dispatcher:     d.Dispatcher,
 		tokenValidator: d.Validator,
-		logger:         d.Logger,
 		tracer:         d.Tracer,
 	}
 }

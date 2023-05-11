@@ -7,11 +7,10 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/go-cmp v0.5.9
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/krixlion/dev_forum-auth v0.0.0-20230510225146-0df0dff81be5
+	github.com/krixlion/dev_forum-auth v0.0.0-20230511185127-54a934446b36
 	github.com/krixlion/dev_forum-lib v0.0.0-20230428174047-8b06c4aa9709
 	github.com/krixlion/dev_forum-rabbitmq v0.0.0-20230321225335-aacfca540fbc
 	github.com/krixlion/dev_forum-user v0.0.0-20230428173550-97a13046bc8e
-	github.com/lestrrat-go/jwx v1.2.25
 	github.com/redis/go-redis/extra/redisotel/v9 v9.0.2
 	github.com/redis/go-redis/v9 v9.0.2
 	github.com/stretchr/testify v1.8.2
@@ -42,6 +41,7 @@ require (
 	github.com/lestrrat-go/blackmagic v1.0.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/iter v1.0.1 // indirect
+	github.com/lestrrat-go/jwx v1.2.25 // indirect
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

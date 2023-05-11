@@ -46,7 +46,6 @@ func setUpServer(ctx context.Context, storage storagemocks.CQRStorage, broker mo
 	server := server.NewArticleServer(server.Dependencies{
 		Storage:    storage,
 		Dispatcher: dispatcher.NewDispatcher(broker, 2),
-		Logger:     nulls.NullLogger{},
 		Tracer:     nulls.NullTracer{},
 	})
 

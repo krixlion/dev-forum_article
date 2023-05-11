@@ -27,7 +27,6 @@ import (
 	"github.com/krixlion/dev_forum-lib/tracing"
 	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
-	"github.com/lestrrat-go/jwx/jwt"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
@@ -158,11 +157,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	}
 	authClient := authPb.NewAuthServiceClient(authConn)
 
-	tokenValidator, err := validator.NewValidator(validator.Config{
-		Issuer:      "http://auth-service",
-		Clock:       jwt.ClockFunc(time.Now),
-		RefreshFunc: validator.DefaultRefreshFunc(authClient),
-	})
+	tokenValidator, err := validator.NewValidator("http://auth-service", validator.DefaultRefreshFunc(authClient))
 	if err != nil {
 		panic(err)
 	}
@@ -181,7 +176,6 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		Validator:  tokenValidator,
 		Storage:    storage,
 		Dispatcher: dispatcher,
-		Logger:     logger,
 		Tracer:     tracer,
 	})
 

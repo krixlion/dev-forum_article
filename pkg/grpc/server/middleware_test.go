@@ -25,7 +25,6 @@ import (
 
 func setUpServer(ctx context.Context, db storage.CQRStorage, userClient userPb.UserServiceClient, mq event.Broker) ArticleServer {
 	s := NewArticleServer(Dependencies{
-		Logger: nulls.NullLogger{},
 		Services: Services{
 			User: userClient,
 		},
