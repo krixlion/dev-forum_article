@@ -65,9 +65,9 @@ func Test_GetMultiple(t *testing.T) {
 				limit: "3",
 			},
 			want: []entity.Article{
-				testdata.Articles["18"],
-				testdata.Articles["17"],
-				testdata.Articles["16"],
+				testdata.Articles["8"],
+				testdata.Articles["7"],
+				testdata.Articles["6"],
 			},
 		},
 		{
@@ -77,9 +77,9 @@ func Test_GetMultiple(t *testing.T) {
 				limit:  "3",
 			},
 			want: []entity.Article{
-				testdata.Articles["16"],
-				testdata.Articles["15"],
-				testdata.Articles["14"],
+				testdata.Articles["6"],
+				testdata.Articles["5"],
+				testdata.Articles["4"],
 			},
 		},
 		{
@@ -89,7 +89,7 @@ func Test_GetMultiple(t *testing.T) {
 				limit:  "1",
 			},
 			want: []entity.Article{
-				testdata.Articles["16"],
+				testdata.Articles["6"],
 			},
 		},
 	}
@@ -127,8 +127,8 @@ func Test_Get(t *testing.T) {
 	}{
 		{
 			name: "Test if works on simple data",
-			arg:  "10",
-			want: testdata.Articles["10"],
+			arg:  "1",
+			want: testdata.Articles["1"],
 		},
 		{
 			name:    "Test if returns error on non-existent key",

@@ -28,8 +28,8 @@ func initTestData() error {
 	ArticleMaps = make(map[string]map[string]string, count)
 	Articles = make(map[string]entity.Article, count)
 
-	for i := 0; i <= count; i++ {
-		id := strconv.Itoa(i + 10)
+	for i := 1; i <= count; i++ {
+		id := strconv.Itoa(i)
 		ArticleMaps[id] = map[string]string{
 			"id":         id,
 			"user_id":    id,
