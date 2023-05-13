@@ -17,11 +17,11 @@ func (s ArticleServer) ValidateRequestInterceptor() grpc.UnaryServerInterceptor 
 
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		switch info.FullMethod {
-		case "/ArticleService/Create":
+		case "/article.ArticleService/Create":
 			return s.validateCreate(ctx, req.(*pb.CreateArticleRequest), handler)
-		case "/ArticleService/Update":
+		case "/article.ArticleService/Update":
 			return s.validateUpdate(ctx, req.(*pb.UpdateArticleRequest), handler)
-		case "/ArticleService/Delete":
+		case "/article.ArticleService/Delete":
 			return s.validateDelete(ctx, req.(*pb.DeleteArticleRequest), handler)
 		default:
 			return handler(ctx, req)
@@ -94,7 +94,7 @@ func (s ArticleServer) validateDelete(ctx context.Context, req *pb.DeleteArticle
 		return nil, err
 	}
 
-	if _, err := s.storage.Get(ctx, id); err != nil {
+	if _, err := s.query.Get(ctx, id); err != nil {
 		tracing.SetSpanErr(span, err)
 		// Do not let user whether entity with provided ID existed before deleting or not.
 		return nil, nil

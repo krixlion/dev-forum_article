@@ -1,8 +1,9 @@
-package query
+package redis
 
 import (
 	"context"
 
+	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-lib/logging"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
@@ -10,13 +11,16 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+var _ storage.Getter = (*Redis)(nil)
+
 const (
 	articlesPrefix = "articles"
 	usersPrefix    = "users"
 )
 
-type DB struct {
+type Redis struct {
 	redis  *redis.Client
+	logger logging.Logger
 	tracer trace.Tracer
 }
 
@@ -28,8 +32,7 @@ func (t tracerProvider) Tracer(string, ...trace.TracerOption) trace.Tracer {
 	return t.tracer
 }
 
-func MakeDB(host, port, pass string, logger logging.Logger, tracer trace.Tracer) (DB, error) {
-
+func MakeDB(host, port, pass string, logger logging.Logger, tracer trace.Tracer) (Redis, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     host + ":" + port,
 		Password: pass,
@@ -37,19 +40,20 @@ func MakeDB(host, port, pass string, logger logging.Logger, tracer trace.Tracer)
 	})
 
 	if err := redisotel.InstrumentMetrics(rdb); err != nil {
-		return DB{}, err
+		return Redis{}, err
 	}
 
 	if err := redisotel.InstrumentTracing(rdb, redisotel.WithTracerProvider(tracerProvider{tracer: tracer})); err != nil {
-		return DB{}, err
+		return Redis{}, err
 	}
 
-	return DB{
+	return Redis{
 		redis:  rdb,
+		logger: logger,
 		tracer: tracer,
 	}, nil
 }
 
-func (db DB) Ping(ctx context.Context) error {
+func (db Redis) Ping(ctx context.Context) error {
 	return db.redis.Ping(ctx).Err()
 }

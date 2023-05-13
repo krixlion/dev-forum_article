@@ -16,7 +16,7 @@ func addArticlesPrefix(v string) string {
 	return fmt.Sprintf("%s-%s", "article", v)
 }
 
-func (db DB) Create(ctx context.Context, article entity.Article) error {
+func (db Eventstore) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Create")
 	defer span.End()
 
@@ -46,7 +46,7 @@ func (db DB) Create(ctx context.Context, article entity.Article) error {
 	return nil
 }
 
-func (db DB) Update(ctx context.Context, article entity.Article) error {
+func (db Eventstore) Update(ctx context.Context, article entity.Article) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Update")
 	defer span.End()
 
@@ -86,7 +86,7 @@ func (db DB) Update(ctx context.Context, article entity.Article) error {
 	return nil
 }
 
-func (db DB) Delete(ctx context.Context, id string) error {
+func (db Eventstore) Delete(ctx context.Context, id string) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Delete")
 	defer span.End()
 
@@ -118,7 +118,7 @@ func (db DB) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (db DB) lastRevision(ctx context.Context, articleId string) (*esdb.ResolvedEvent, error) {
+func (db Eventstore) lastRevision(ctx context.Context, articleId string) (*esdb.ResolvedEvent, error) {
 	ctx, span := db.tracer.Start(ctx, "esdb.lastRevision")
 	defer span.End()
 

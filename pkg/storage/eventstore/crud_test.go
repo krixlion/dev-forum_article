@@ -33,7 +33,7 @@ func init() {
 	user = os.Getenv("DB_WRITE_USER")
 }
 
-func setUpDB() DB {
+func setUpDB() Eventstore {
 	db, err := MakeDB(port, host, user, pass, nulls.NullLogger{}, nulls.NullTracer{})
 	if err != nil {
 		log.Fatalf("Failed to make DB, err: %s", err)

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
@@ -24,16 +23,20 @@ import (
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
 	services       Services
-	storage        storage.CQRStorage
+	query          storage.Getter
+	cmd            storage.Writer
 	dispatcher     *dispatcher.Dispatcher
+	broker         event.Broker
 	tokenValidator tokens.Validator
 	tracer         trace.Tracer
 }
 
 type Dependencies struct {
 	Services   Services
-	Storage    storage.CQRStorage
+	Query      storage.Getter
+	Cmd        storage.Writer
 	Dispatcher *dispatcher.Dispatcher
+	Broker     event.Broker
 	Validator  tokens.Validator
 	Tracer     trace.Tracer
 }
@@ -46,7 +49,9 @@ type Services struct {
 func NewArticleServer(d Dependencies) ArticleServer {
 	return ArticleServer{
 		services:       d.Services,
-		storage:        d.Storage,
+		query:          d.Query,
+		cmd:            d.Cmd,
+		broker:         d.Broker,
 		dispatcher:     d.Dispatcher,
 		tokenValidator: d.Validator,
 		tracer:         d.Tracer,
@@ -54,17 +59,10 @@ func NewArticleServer(d Dependencies) ArticleServer {
 }
 
 func (s ArticleServer) Close() error {
-	var errMsg string
+	cmdErr := s.cmd.Close()
 
-	err := s.storage.Close()
-	if err != nil {
-		errMsg = fmt.Sprintf("%s, failed to close storage: %s", errMsg, err)
-	}
-
-	if errMsg != "" {
-		return errors.New(errMsg)
-	}
-
+	queryErr := s.query.Close()
+	errors.Join(cmdErr, queryErr)
 	return nil
 }
 
@@ -74,7 +72,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 
 	article := articleFromPB(req.GetArticle())
 
-	if err := s.storage.Create(ctx, article); err != nil {
+	if err := s.cmd.Create(ctx, article); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -83,7 +81,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	if err := s.dispatcher.ResilientPublish(event); err != nil {
+	if err := s.broker.ResilientPublish(event); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -101,7 +99,7 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 
 	id := req.GetId()
 
-	if err := s.storage.Delete(ctx, id); err != nil {
+	if err := s.cmd.Delete(ctx, id); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
@@ -110,7 +108,7 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	if err := s.dispatcher.ResilientPublish(event); err != nil {
+	if err := s.broker.ResilientPublish(event); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -126,7 +124,7 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 
 	article := articleFromPB(req.GetArticle())
 
-	if err := s.storage.Update(ctx, article); err != nil {
+	if err := s.cmd.Update(ctx, article); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -135,7 +133,7 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	if err := s.dispatcher.ResilientPublish(event); err != nil {
+	if err := s.broker.ResilientPublish(event); err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -149,7 +147,7 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	article, err := s.storage.Get(ctx, req.GetId())
+	article, err := s.query.Get(ctx, req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get article: %v", err)
 	}
@@ -171,7 +169,7 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 	ctx, span := s.tracer.Start(ctx, "server.GetStream")
 	defer span.End()
 
-	articles, err := s.storage.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
+	articles, err := s.query.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
 	if err != nil {
 		return err
 	}

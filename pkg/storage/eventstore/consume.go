@@ -12,8 +12,8 @@ import (
 	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
 )
 
-// Consume listens for new article event streams with given type and sends them through returned channel.
-func (db DB) Consume(ctx context.Context, _ string, eType event.EventType) (<-chan event.Event, error) {
+// Consume listens to article event streams with given event type for events and sends them through the returned channel.
+func (db Eventstore) Consume(ctx context.Context, _ string, eType event.EventType) (<-chan event.Event, error) {
 	options := esdb.SubscribeToAllOptions{
 		From:           esdb.End{},
 		ResolveLinkTos: true,

@@ -17,7 +17,7 @@ type ArticleService struct {
 	grpcServer *grpc.Server
 
 	// Consumer for events used to update and sync the read model.
-	syncEvents event.Consumer
+	// syncEvents event.Consumer
 	broker     event.Broker
 	dispatcher *dispatcher.Dispatcher
 	logger     logging.Logger
@@ -25,10 +25,10 @@ type ArticleService struct {
 }
 
 type Dependencies struct {
-	Logger       logging.Logger
-	Broker       event.Broker
-	GRPCServer   *grpc.Server
-	SyncEvents   event.Consumer
+	Logger     logging.Logger
+	Broker     event.Broker
+	GRPCServer *grpc.Server
+	// SyncEvents   event.Consumer
 	Dispatcher   *dispatcher.Dispatcher
 	ShutdownFunc func() error
 }
@@ -39,9 +39,9 @@ func NewArticleService(grpcPort int, d Dependencies) *ArticleService {
 		dispatcher: d.Dispatcher,
 		grpcServer: d.GRPCServer,
 		broker:     d.Broker,
-		syncEvents: d.SyncEvents,
-		logger:     d.Logger,
-		shutdown:   d.ShutdownFunc,
+		// syncEvents: d.SyncEvents,
+		logger:   d.Logger,
+		shutdown: d.ShutdownFunc,
 	}
 
 	return s
@@ -59,7 +59,7 @@ func (s *ArticleService) Run(ctx context.Context) {
 
 	go func() {
 		s.dispatcher.AddEventProviders(s.eventProviders(ctx)...)
-		s.dispatcher.AddSyncEventProviders(s.syncEventProviders(ctx)...)
+		// s.dispatcher.AddSyncEventProviders(s.syncEventProviders(ctx)...)
 		s.dispatcher.Run(ctx)
 	}()
 
@@ -74,26 +74,26 @@ func (s *ArticleService) Close() error {
 	return s.shutdown()
 }
 
-func (s *ArticleService) syncEventProviders(ctx context.Context) []<-chan event.Event {
-	eTypes := []event.EventType{
-		event.ArticleCreated,
-		event.ArticleDeleted,
-		event.ArticleUpdated,
-	}
+// func (s *ArticleService) syncEventProviders(ctx context.Context) []<-chan event.Event {
+// 	eTypes := []event.EventType{
+// 		event.ArticleCreated,
+// 		event.ArticleDeleted,
+// 		event.ArticleUpdated,
+// 	}
 
-	chans := make([]<-chan event.Event, 0, len(eTypes))
+// 	chans := make([]<-chan event.Event, 0, len(eTypes))
 
-	for _, eType := range eTypes {
-		ch, err := s.syncEvents.Consume(ctx, "", eType)
-		if err != nil {
-			panic(err)
-		}
+// 	for _, eType := range eTypes {
+// 		ch, err := s.syncEvents.Consume(ctx, "", eType)
+// 		if err != nil {
+// 			panic(err)
+// 		}
 
-		chans = append(chans, ch)
-	}
+// 		chans = append(chans, ch)
+// 	}
 
-	return chans
-}
+// 	return chans
+// }
 
 func (s *ArticleService) eventProviders(ctx context.Context) []<-chan event.Event {
 	eTypes := map[string]event.EventType{

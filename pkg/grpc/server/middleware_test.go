@@ -23,14 +23,16 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func setUpServer(ctx context.Context, db storage.CQRStorage, userClient userPb.UserServiceClient, mq event.Broker) ArticleServer {
+func setUpServer(ctx context.Context, getter storage.Getter, writer storage.Writer, userClient userPb.UserServiceClient, mq event.Broker) ArticleServer {
 	s := NewArticleServer(Dependencies{
 		Services: Services{
 			User: userClient,
 		},
-		Storage:    db,
+		Query:      getter,
+		Cmd:        writer,
+		Broker:     mq,
 		Tracer:     nulls.NullTracer{},
-		Dispatcher: dispatcher.NewDispatcher(mq, 0),
+		Dispatcher: dispatcher.NewDispatcher(0),
 	})
 	return s
 }
@@ -38,7 +40,7 @@ func setUpServer(ctx context.Context, db storage.CQRStorage, userClient userPb.U
 func Test_validateCreate(t *testing.T) {
 	tests := []struct {
 		name       string
-		storage    storagemocks.CQRStorage
+		cmd        storagemocks.Writer
 		broker     mocks.Broker
 		handler    mocks.UnaryHandler
 		userClient userMock.UserClient
@@ -58,8 +60,8 @@ func Test_validateCreate(t *testing.T) {
 				m.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(&userPb.GetUserResponse{}, errors.New("test err")).Once()
 				return m
 			}(),
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			cmd: func() storagemocks.Writer {
+				m := storagemocks.NewWriter()
 				m.On("Create", mock.Anything).Return(nil).Once()
 				return m
 			}(),
@@ -80,7 +82,7 @@ func Test_validateCreate(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			s := setUpServer(ctx, tt.storage, tt.userClient, tt.broker)
+			s := setUpServer(ctx, storagemocks.Getter{}, tt.cmd, tt.userClient, tt.broker)
 
 			got, err := s.validateCreate(ctx, tt.req, tt.handler.GetMock())
 			if (err != nil) != tt.wantErr {
@@ -98,7 +100,7 @@ func Test_validateCreate(t *testing.T) {
 func Test_validateUpdate(t *testing.T) {
 	tests := []struct {
 		name       string
-		storage    storagemocks.CQRStorage
+		query      storagemocks.Getter
 		handler    mocks.UnaryHandler
 		broker     mocks.Broker
 		userClient userMock.UserClient
@@ -113,8 +115,8 @@ func Test_validateUpdate(t *testing.T) {
 				return m
 			}(),
 			userClient: userMock.NewUserClient(),
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			query: func() storagemocks.Getter {
+				m := storagemocks.NewGetter()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Once()
 				return m
 			}(),
@@ -130,7 +132,7 @@ func Test_validateUpdate(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			s := setUpServer(ctx, tt.storage, tt.userClient, tt.broker)
+			s := setUpServer(ctx, tt.query, storagemocks.Writer{}, tt.userClient, tt.broker)
 
 			got, err := s.validateUpdate(ctx, tt.req, tt.handler.GetMock())
 			if (err != nil) != tt.wantErr {
@@ -148,7 +150,7 @@ func Test_validateUpdate(t *testing.T) {
 func Test_validateDelete(t *testing.T) {
 	tests := []struct {
 		name       string
-		storage    storagemocks.CQRStorage
+		query      storagemocks.Getter
 		handler    mocks.UnaryHandler
 		broker     mocks.Broker
 		userClient userMock.UserClient
@@ -170,8 +172,8 @@ func Test_validateDelete(t *testing.T) {
 				m.On("Get", mock.Anything, mock.Anything, mock.Anything).Return(resp, nil).Once()
 				return m
 			}(),
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			query: func() storagemocks.Getter {
+				m := storagemocks.NewGetter()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, errors.New("not found")).Once()
 				return m
 			}(),
@@ -191,7 +193,7 @@ func Test_validateDelete(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			s := setUpServer(ctx, tt.storage, tt.userClient, tt.broker)
+			s := setUpServer(ctx, tt.query, storagemocks.Writer{}, tt.userClient, tt.broker)
 
 			_, err := s.validateDelete(ctx, tt.req, tt.handler.GetMock())
 			if (err != nil) != tt.wantErr {

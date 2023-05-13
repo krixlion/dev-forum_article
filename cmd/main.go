@@ -14,13 +14,11 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/service"
-	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-article/pkg/storage/eventstore"
-	"github.com/krixlion/dev_forum-article/pkg/storage/query"
+	"github.com/krixlion/dev_forum-article/pkg/storage/redis"
 	authPb "github.com/krixlion/dev_forum-auth/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-auth/pkg/tokens/validator"
 	"github.com/krixlion/dev_forum-lib/env"
-	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/broker"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/logging"
@@ -96,12 +94,10 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	queryPort := os.Getenv("DB_READ_PORT")
 	queryHost := os.Getenv("DB_READ_HOST")
 	queryPass := os.Getenv("DB_READ_PASS")
-	query, err := query.MakeDB(queryHost, queryPort, queryPass, logger, tracer)
+	query, err := redis.MakeDB(queryHost, queryPort, queryPass, logger, tracer)
 	if err != nil {
 		panic(err)
 	}
-
-	storage := storage.NewCQRStorage(cmd, query, logger, tracer)
 
 	mqPort := os.Getenv("MQ_PORT")
 	mqHost := os.Getenv("MQ_HOST")
@@ -128,10 +124,9 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		rabbitmq.WithTracer(tracer),
 	)
 	broker := broker.NewBroker(messageQueue, logger, tracer)
-	dispatcher := dispatcher.NewDispatcher(broker, 20)
-	dispatcher.SetSyncHandler(event.HandlerFunc(storage.CatchUp))
+	dispatcher := dispatcher.NewDispatcher(20)
 
-	for eType, handlers := range storage.EventHandlers() {
+	for eType, handlers := range query.EventHandlers() {
 		dispatcher.Subscribe(eType, handlers...)
 	}
 
@@ -163,7 +158,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	}
 
 	go func() {
-		if tokenValidator.Run(ctx); err != nil {
+		if err := tokenValidator.Run(ctx); err != nil {
 			panic(err)
 		}
 	}()
@@ -174,8 +169,10 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 			Auth: authClient,
 		},
 		Validator:  tokenValidator,
-		Storage:    storage,
+		Query:      query,
+		Cmd:        cmd,
 		Dispatcher: dispatcher,
+		Broker:     broker,
 		Tracer:     tracer,
 	})
 
@@ -199,7 +196,6 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		Logger:     logger,
 		Broker:     broker,
 		GRPCServer: grpcServer,
-		SyncEvents: &cmd,
 		Dispatcher: dispatcher,
 		ShutdownFunc: func() error {
 			grpcServer.GracefulStop()

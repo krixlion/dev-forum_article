@@ -17,6 +17,7 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
+	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-article/pkg/storage/storagemocks"
 
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
@@ -34,7 +35,7 @@ import (
 // server allowing only for local calls for testing.
 // Returns a client to interact with the server.
 // The server is shutdown when ctx.Done() receives.
-func setUpServer(ctx context.Context, storage storagemocks.CQRStorage, broker mocks.Broker) pb.ArticleServiceClient {
+func setUpServer(ctx context.Context, query storage.Getter, cmd storage.Writer, broker mocks.Broker) pb.ArticleServiceClient {
 	// bufconn allows the server to call itself
 	// great for testing across whole infrastructure
 	lis := bufconn.Listen(1024 * 1024)
@@ -44,8 +45,10 @@ func setUpServer(ctx context.Context, storage storagemocks.CQRStorage, broker mo
 
 	s := grpc.NewServer()
 	server := server.NewArticleServer(server.Dependencies{
-		Storage:    storage,
-		Dispatcher: dispatcher.NewDispatcher(broker, 2),
+		Query:      query,
+		Cmd:        cmd,
+		Broker:     broker,
+		Dispatcher: dispatcher.NewDispatcher(2),
 		Tracer:     nulls.NullTracer{},
 	})
 
@@ -83,22 +86,22 @@ func Test_Get(t *testing.T) {
 
 	tests := []struct {
 		broker  mocks.Broker
-		desc    string
+		query   storagemocks.Getter
+		name    string
 		arg     *pb.GetArticleRequest
 		want    *pb.GetArticleResponse
 		wantErr bool
-		storage storagemocks.CQRStorage
 	}{
 		{
-			desc: "Test if response is returned properly on simple request",
+			name: "Test if response is returned properly on simple request",
 			arg: &pb.GetArticleRequest{
 				Id: article.Id,
 			},
 			want: &pb.GetArticleResponse{
 				Article: article,
 			},
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			query: func() storagemocks.Getter {
+				m := storagemocks.NewGetter()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(v, nil).Times(1)
 				return m
 			}(),
@@ -109,14 +112,14 @@ func Test_Get(t *testing.T) {
 			}(),
 		},
 		{
-			desc: "Test if error is returned properly on storage error",
+			name: "Test if error is returned properly on storage error",
 			arg: &pb.GetArticleRequest{
 				Id: "",
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			query: func() storagemocks.Getter {
+				m := storagemocks.NewGetter()
 				m.On("Get", mock.Anything, mock.AnythingOfType("string")).Return(entity.Article{}, errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -128,11 +131,11 @@ func Test_Get(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
 
-			client := setUpServer(ctx, tt.storage, tt.broker)
+			client := setUpServer(ctx, tt.query, storagemocks.NewWriter(), tt.broker)
 
 			ctx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
@@ -167,22 +170,22 @@ func Test_Create(t *testing.T) {
 
 	tests := []struct {
 		broker   mocks.Broker
-		desc     string
+		cmd      storagemocks.Writer
+		name     string
 		arg      *pb.CreateArticleRequest
 		dontWant *pb.CreateArticleResponse
 		wantErr  bool
-		storage  storagemocks.CQRStorage
 	}{
 		{
-			desc: "Test if response is returned properly on simple request",
+			name: "Test if response is returned properly on simple request",
 			arg: &pb.CreateArticleRequest{
 				Article: article,
 			},
 			dontWant: &pb.CreateArticleResponse{
 				Id: article.Id,
 			},
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			cmd: func() storagemocks.Writer {
+				m := storagemocks.NewWriter()
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
 				return m
 			}(),
@@ -193,14 +196,14 @@ func Test_Create(t *testing.T) {
 			}(),
 		},
 		{
-			desc: "Test if error is returned properly on storage error",
+			name: "Test if error is returned properly on storage error",
 			arg: &pb.CreateArticleRequest{
 				Article: article,
 			},
 			dontWant: nil,
 			wantErr:  true,
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			cmd: func() storagemocks.Writer {
+				m := storagemocks.NewWriter()
 				m.On("Create", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -212,10 +215,10 @@ func Test_Create(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tt.storage, tt.broker)
+			client := setUpServer(ctx, storagemocks.NewGetter(), tt.cmd, tt.broker)
 
 			got, err := client.Create(ctx, tt.arg)
 			if err != nil {
@@ -228,7 +231,7 @@ func Test_Create(t *testing.T) {
 			} else {
 				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
 			}
-			tt.storage.AssertNumberOfCalls(t, "Create", 1)
+			tt.cmd.AssertNumberOfCalls(t, "Create", 1)
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
@@ -254,20 +257,20 @@ func Test_Update(t *testing.T) {
 
 	tests := []struct {
 		broker  mocks.Broker
-		desc    string
+		cmd     storagemocks.Writer
+		name    string
 		arg     *pb.UpdateArticleRequest
 		want    *emptypb.Empty
 		wantErr bool
-		storage storagemocks.CQRStorage
 	}{
 		{
-			desc: "Test if response is returned properly on simple request",
+			name: "Test if response is returned properly on simple request",
 			arg: &pb.UpdateArticleRequest{
 				Article: article,
 			},
 			want: &emptypb.Empty{},
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			cmd: func() storagemocks.Writer {
+				m := storagemocks.NewWriter()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(nil).Times(1)
 				return m
 			}(),
@@ -278,14 +281,14 @@ func Test_Update(t *testing.T) {
 			}(),
 		},
 		{
-			desc: "Test if error is returned properly on storage error",
+			name: "Test if error is returned properly on storage error",
 			arg: &pb.UpdateArticleRequest{
 				Article: article,
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			cmd: func() storagemocks.Writer {
+				m := storagemocks.NewWriter()
 				m.On("Update", mock.Anything, mock.AnythingOfType("entity.Article")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -297,10 +300,10 @@ func Test_Update(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tt.storage, tt.broker)
+			client := setUpServer(ctx, storagemocks.NewGetter(), tt.cmd, tt.broker)
 
 			got, err := client.Update(ctx, tt.arg)
 			if err != nil {
@@ -313,7 +316,7 @@ func Test_Update(t *testing.T) {
 			} else {
 				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
 			}
-			tt.storage.AssertNumberOfCalls(t, "Update", 1)
+			tt.cmd.AssertNumberOfCalls(t, "Update", 1)
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
@@ -339,20 +342,20 @@ func Test_Delete(t *testing.T) {
 
 	tests := []struct {
 		broker  mocks.Broker
-		desc    string
+		name    string
 		arg     *pb.DeleteArticleRequest
 		want    *emptypb.Empty
 		wantErr bool
-		storage storagemocks.CQRStorage
+		cmd     storagemocks.Writer
 	}{
 		{
-			desc: "Test if response is returned properly on simple request",
+			name: "Test if response is returned properly on simple request",
 			arg: &pb.DeleteArticleRequest{
 				Id: article.Id,
 			},
 			want: &emptypb.Empty{},
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			cmd: func() storagemocks.Writer {
+				m := storagemocks.NewWriter()
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(nil).Times(1)
 				return m
 			}(),
@@ -363,14 +366,14 @@ func Test_Delete(t *testing.T) {
 			}(),
 		},
 		{
-			desc: "Test if error is returned properly on storage error",
+			name: "Test if error is returned properly on storage error",
 			arg: &pb.DeleteArticleRequest{
 				Id: article.Id,
 			},
 			want:    nil,
 			wantErr: true,
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			cmd: func() storagemocks.Writer {
+				m := storagemocks.NewWriter()
 				m.On("Delete", mock.Anything, mock.AnythingOfType("string")).Return(errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -382,10 +385,10 @@ func Test_Delete(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tt.storage, tt.broker)
+			client := setUpServer(ctx, storagemocks.NewGetter(), tt.cmd, tt.broker)
 
 			got, err := client.Delete(ctx, tt.arg)
 			if err != nil {
@@ -398,7 +401,7 @@ func Test_Delete(t *testing.T) {
 			} else {
 				tt.broker.AssertNumberOfCalls(t, "ResilientPublish", 1)
 			}
-			tt.storage.AssertNumberOfCalls(t, "Delete", 1)
+			tt.cmd.AssertNumberOfCalls(t, "Delete", 1)
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
@@ -435,21 +438,21 @@ func Test_GetStream(t *testing.T) {
 
 	tests := []struct {
 		broker  mocks.Broker
-		desc    string
+		name    string
 		arg     *pb.GetArticlesRequest
 		want    []*pb.Article
 		wantErr bool
-		storage storagemocks.CQRStorage
+		query   storagemocks.Getter
 	}{
 		{
-			desc: "Test if response is returned properly on simple request",
+			name: "Test if response is returned properly on simple request",
 			arg: &pb.GetArticlesRequest{
 				Offset: "0",
 				Limit:  "5",
 			},
 			want: pbArticles,
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			query: func() storagemocks.Getter {
+				m := storagemocks.NewGetter()
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(articles, nil).Times(1)
 				return m
 			}(),
@@ -460,12 +463,12 @@ func Test_GetStream(t *testing.T) {
 			}(),
 		},
 		{
-			desc:    "Test if error is returned properly on storage error",
+			name:    "Test if error is returned properly on storage error",
 			arg:     &pb.GetArticlesRequest{},
 			want:    nil,
 			wantErr: true,
-			storage: func() storagemocks.CQRStorage {
-				m := storagemocks.NewCQRStorage()
+			query: func() storagemocks.Getter {
+				m := storagemocks.NewGetter()
 				m.On("GetMultiple", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return([]entity.Article{}, errors.New("test err")).Times(1)
 				return m
 			}(),
@@ -477,10 +480,10 @@ func Test_GetStream(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			ctx, shutdown := context.WithCancel(context.Background())
 			defer shutdown()
-			client := setUpServer(ctx, tt.storage, tt.broker)
+			client := setUpServer(ctx, tt.query, storagemocks.NewWriter(), tt.broker)
 
 			stream, err := client.GetStream(ctx, tt.arg)
 			if err != nil {

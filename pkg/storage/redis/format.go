@@ -1,4 +1,4 @@
-package query
+package redis
 
 import (
 	"fmt"
@@ -23,16 +23,12 @@ func scan(s scanCmder, dest ...interface{}) error {
 		if len(cmd.Val()) == 0 {
 			return redis.Nil
 		}
+
 	case *redis.SliceCmd:
-		keyExists := false
 		for _, v := range cmd.Val() {
-			if v != nil {
-				keyExists = true
-				break
+			if v == nil {
+				return redis.Nil
 			}
-		}
-		if !keyExists {
-			return redis.Nil
 		}
 	}
 

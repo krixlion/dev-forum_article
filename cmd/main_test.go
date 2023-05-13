@@ -1,8 +1,10 @@
 package main
 
 import (
+	"log"
 	"testing"
 
+	"github.com/krixlion/dev_forum-article/pkg/storage/redis/testdata"
 	"go.uber.org/goleak"
 )
 
@@ -13,5 +15,10 @@ var _ = func() bool {
 }()
 
 func TestMain(m *testing.M) {
+	if !testing.Short() {
+		if err := testdata.Seed(); err != nil {
+			log.Fatalf("Failed to seed before the tests: %v", err)
+		}
+	}
 	goleak.VerifyTestMain(m)
 }
