@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/krixlion/dev_forum-article/internal/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/storage/redis"
 	"github.com/krixlion/dev_forum-article/pkg/storage/redis/testdata"
 	"github.com/krixlion/dev_forum-lib/env"

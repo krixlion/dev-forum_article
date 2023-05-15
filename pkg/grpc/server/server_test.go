@@ -13,10 +13,10 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/krixlion/dev_forum-article/internal/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
-	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-article/pkg/storage/storagemocks"
 

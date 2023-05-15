@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/krixlion/dev_forum-article/internal/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 )
 
 var (

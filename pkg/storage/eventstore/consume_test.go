@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/krixlion/dev_forum-article/internal/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"github.com/krixlion/dev_forum-lib/event"
 )
 

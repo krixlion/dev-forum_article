@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/krixlion/dev_forum-article/internal/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
-	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

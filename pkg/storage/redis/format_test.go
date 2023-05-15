@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/krixlion/dev_forum-article/internal/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
-	"github.com/krixlion/dev_forum-article/pkg/helpers/gentest"
 )
 
 func Test_mapArticle(t *testing.T) {
