@@ -22,8 +22,7 @@ func (db Redis) Get(ctx context.Context, id string) (entity.Article, error) {
 	var data redisArticle
 
 	cmd := db.redis.HGetAll(ctx, id)
-	err := scan(cmd, &data)
-	if err != nil {
+	if err := scan(cmd, &data); err != nil {
 		tracing.SetSpanErr(span, err)
 		return entity.Article{}, err
 	}

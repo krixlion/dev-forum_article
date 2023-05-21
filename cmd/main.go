@@ -125,10 +125,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	)
 	broker := broker.NewBroker(messageQueue, logger, tracer)
 	dispatcher := dispatcher.NewDispatcher(20)
-
-	for eType, handlers := range query.EventHandlers() {
-		dispatcher.Subscribe(eType, handlers...)
-	}
+	dispatcher.Register(query)
 
 	userConn, err := grpc.Dial("user-service:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -152,7 +149,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	}
 	authClient := authPb.NewAuthServiceClient(authConn)
 
-	tokenValidator, err := validator.NewValidator("http://auth-service", validator.DefaultRefreshFunc(authClient))
+	tokenValidator, err := validator.NewValidator("http://auth-service", validator.DefaultRefreshFunc(authClient, tracer))
 	if err != nil {
 		panic(err)
 	}
@@ -177,14 +174,15 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	})
 
 	grpcServer := grpc.NewServer(
-		grpc.StreamInterceptor(
+		grpc.ChainStreamInterceptor(
 			otelgrpc.StreamServerInterceptor(),
+			grpc_recovery.StreamServerInterceptor(),
 		),
 		grpc.ChainUnaryInterceptor(
-			grpc_auth.UnaryServerInterceptor(articleServer.AuthFunc),
 			grpc_recovery.UnaryServerInterceptor(),
-			grpc_zap.UnaryServerInterceptor(zap.L()),
+			grpc_zap.UnaryServerInterceptor(zap.L(), grpc_zap.WithDecider(func(fullMethodName string, err error) bool { return true })),
 			otelgrpc.UnaryServerInterceptor(),
+			grpc_auth.UnaryServerInterceptor(articleServer.AuthFunc),
 			articleServer.ValidateRequestInterceptor(),
 		),
 	)
@@ -200,6 +198,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		ShutdownFunc: func() error {
 			grpcServer.GracefulStop()
 			userConn.Close()
+			authConn.Close()
 			return articleServer.Close()
 		},
 	}

@@ -59,7 +59,6 @@ func (s *ArticleService) Run(ctx context.Context) {
 
 	go func() {
 		s.dispatcher.AddEventProviders(s.eventProviders(ctx)...)
-		// s.dispatcher.AddSyncEventProviders(s.syncEventProviders(ctx)...)
 		s.dispatcher.Run(ctx)
 	}()
 
@@ -70,34 +69,12 @@ func (s *ArticleService) Run(ctx context.Context) {
 	}
 }
 
-func (s *ArticleService) Close() error {
-	return s.shutdown()
-}
-
-// func (s *ArticleService) syncEventProviders(ctx context.Context) []<-chan event.Event {
-// 	eTypes := []event.EventType{
-// 		event.ArticleCreated,
-// 		event.ArticleDeleted,
-// 		event.ArticleUpdated,
-// 	}
-
-// 	chans := make([]<-chan event.Event, 0, len(eTypes))
-
-// 	for _, eType := range eTypes {
-// 		ch, err := s.syncEvents.Consume(ctx, "", eType)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-
-// 		chans = append(chans, ch)
-// 	}
-
-// 	return chans
-// }
-
 func (s *ArticleService) eventProviders(ctx context.Context) []<-chan event.Event {
 	eTypes := map[string]event.EventType{
 		"deleteAllArticlesBelongingToUser": event.UserDeleted,
+		"SyncDeletedArticles":              event.ArticleDeleted,
+		"SyncCreatedArticles":              event.ArticleCreated,
+		"SyncUpdatedArticles":              event.ArticleUpdated,
 	}
 
 	chans := make([]<-chan event.Event, 0, len(eTypes))
@@ -112,4 +89,8 @@ func (s *ArticleService) eventProviders(ctx context.Context) []<-chan event.Even
 	}
 
 	return chans
+}
+
+func (s *ArticleService) Close() error {
+	return s.shutdown()
 }

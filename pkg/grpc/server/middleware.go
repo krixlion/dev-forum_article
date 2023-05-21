@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"html"
 
 	"github.com/gofrs/uuid"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
@@ -14,7 +15,6 @@ import (
 )
 
 func (s ArticleServer) ValidateRequestInterceptor() grpc.UnaryServerInterceptor {
-
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		switch info.FullMethod {
 		case "/article.ArticleService/Create":
@@ -29,11 +29,13 @@ func (s ArticleServer) ValidateRequestInterceptor() grpc.UnaryServerInterceptor 
 	}
 }
 
-func (s ArticleServer) validateCreate(ctx context.Context, req *pb.CreateArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
-	ctx, span := s.tracer.Start(ctx, "grpc.validateCreate", trace.WithSpanKind(trace.SpanKindClient))
+func (server ArticleServer) validateCreate(ctx context.Context, req *pb.CreateArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
+	ctx, span := server.tracer.Start(ctx, "server.validateCreate", trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
 
-	if req.GetArticle() == nil {
+	article := req.GetArticle()
+
+	if article == nil {
 		err := status.Error(codes.FailedPrecondition, "Article not provided")
 		tracing.SetSpanErr(span, err)
 		return nil, err
@@ -45,10 +47,13 @@ func (s ArticleServer) validateCreate(ctx context.Context, req *pb.CreateArticle
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	req.GetArticle().Id = id.String()
+	article.Id = id.String()
 
-	article := articleFromPB(req.GetArticle())
-	userResp, err := s.services.User.Get(ctx, &userPb.GetUserRequest{Id: article.UserId})
+	// Escape html content.
+	article.Body = html.EscapeString(article.GetBody())
+	article.Title = html.EscapeString(article.GetTitle())
+
+	userResp, err := server.services.User.Get(ctx, &userPb.GetUserRequest{Id: article.GetUserId()})
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return nil, err
@@ -63,8 +68,8 @@ func (s ArticleServer) validateCreate(ctx context.Context, req *pb.CreateArticle
 	return handler(ctx, req)
 }
 
-func (s ArticleServer) validateUpdate(ctx context.Context, req *pb.UpdateArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
-	ctx, span := s.tracer.Start(ctx, "validateUpdate")
+func (server ArticleServer) validateUpdate(ctx context.Context, req *pb.UpdateArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
+	ctx, span := server.tracer.Start(ctx, "server.validateUpdate")
 	defer span.End()
 
 	article := req.GetArticle()
@@ -79,11 +84,15 @@ func (s ArticleServer) validateUpdate(ctx context.Context, req *pb.UpdateArticle
 	// It is not allowed to change article ownership.
 	article.UserId = ""
 
+	// Escape html content.
+	article.Body = html.EscapeString(article.GetBody())
+	article.Title = html.EscapeString(article.GetTitle())
+
 	return handler(ctx, req)
 }
 
-func (s ArticleServer) validateDelete(ctx context.Context, req *pb.DeleteArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
-	ctx, span := s.tracer.Start(ctx, "validateDelete")
+func (server ArticleServer) validateDelete(ctx context.Context, req *pb.DeleteArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
+	ctx, span := server.tracer.Start(ctx, "server.validateDelete")
 	defer span.End()
 
 	id := req.GetId()
@@ -94,7 +103,7 @@ func (s ArticleServer) validateDelete(ctx context.Context, req *pb.DeleteArticle
 		return nil, err
 	}
 
-	if _, err := s.query.Get(ctx, id); err != nil {
+	if _, err := server.query.Get(ctx, id); err != nil {
 		tracing.SetSpanErr(span, err)
 		// Do not let user whether entity with provided ID existed before deleting or not.
 		return nil, nil
