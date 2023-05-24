@@ -154,11 +154,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		panic(err)
 	}
 
-	go func() {
-		if err := tokenValidator.Run(ctx); err != nil {
-			panic(err)
-		}
-	}()
+	go tokenValidator.Run(ctx)
 
 	articleServer := server.NewArticleServer(server.Dependencies{
 		Services: server.Services{
