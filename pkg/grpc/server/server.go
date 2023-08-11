@@ -59,11 +59,7 @@ func NewArticleServer(d Dependencies) ArticleServer {
 }
 
 func (s ArticleServer) Close() error {
-	cmdErr := s.cmd.Close()
-
-	queryErr := s.query.Close()
-	errors.Join(cmdErr, queryErr)
-	return nil
+	return errors.Join(s.cmd.Close(), s.query.Close())
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
