@@ -156,7 +156,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 
 	go tokenValidator.Run(ctx)
 
-	articleServer := server.NewArticleServer(server.Dependencies{
+	articleServer := server.MakeArticleServer(server.Dependencies{
 		Services: server.Services{
 			User: userClient,
 			Auth: authClient,

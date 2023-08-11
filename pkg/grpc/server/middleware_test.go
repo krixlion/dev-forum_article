@@ -24,7 +24,7 @@ import (
 )
 
 func setUpServer(ctx context.Context, getter storage.Getter, writer storage.Writer, userClient userPb.UserServiceClient, mq event.Broker) ArticleServer {
-	s := NewArticleServer(Dependencies{
+	s := MakeArticleServer(Dependencies{
 		Services: Services{
 			User: userClient,
 		},

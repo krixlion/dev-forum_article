@@ -46,7 +46,7 @@ type Services struct {
 	Auth authPb.AuthServiceClient
 }
 
-func NewArticleServer(d Dependencies) ArticleServer {
+func MakeArticleServer(d Dependencies) ArticleServer {
 	return ArticleServer{
 		services:       d.Services,
 		query:          d.Query,

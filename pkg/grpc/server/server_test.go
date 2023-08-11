@@ -44,7 +44,7 @@ func setUpServer(ctx context.Context, query storage.Getter, cmd storage.Writer, 
 	}
 
 	s := grpc.NewServer()
-	server := server.NewArticleServer(server.Dependencies{
+	server := server.MakeArticleServer(server.Dependencies{
 		Query:      query,
 		Cmd:        cmd,
 		Broker:     broker,
