@@ -22,13 +22,13 @@ import (
 	"github.com/krixlion/dev_forum-lib/event/broker"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/logging"
+	"github.com/krixlion/dev_forum-lib/tls"
 	"github.com/krixlion/dev_forum-lib/tracing"
 	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -126,8 +126,14 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	dispatcher := dispatcher.NewDispatcher(20)
 	dispatcher.Register(query)
 
+	tlsCaPath := os.Getenv("TLS_CA_PATH")
+	clientCredentials, err := tls.LoadCA(tlsCaPath)
+	if err != nil {
+		panic(err)
+	}
+
 	userConn, err := grpc.Dial("user-service:50051",
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(clientCredentials),
 		grpc.WithChainUnaryInterceptor(
 			otelgrpc.UnaryClientInterceptor(),
 		),
@@ -138,7 +144,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	userClient := userPb.NewUserServiceClient(userConn)
 
 	authConn, err := grpc.Dial("auth-service:50053",
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(clientCredentials),
 		grpc.WithChainUnaryInterceptor(
 			otelgrpc.UnaryClientInterceptor(),
 		),
@@ -168,7 +174,15 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		Tracer:     tracer,
 	})
 
+	tlsCertPath := os.Getenv("TLS_CERT_PATH")
+	tlsKeyPath := os.Getenv("TLS_KEY_PATH")
+	credentials, err := tls.LoadServerCredentials(tlsCertPath, tlsKeyPath)
+	if err != nil {
+		panic(err)
+	}
+
 	grpcServer := grpc.NewServer(
+		grpc.Creds(credentials),
 		grpc.ChainStreamInterceptor(
 			otelgrpc.StreamServerInterceptor(),
 			grpc_recovery.StreamServerInterceptor(),
