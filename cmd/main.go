@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"os/signal"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
@@ -27,7 +27,6 @@ import (
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
@@ -176,7 +175,6 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		),
 		grpc.ChainUnaryInterceptor(
 			grpc_recovery.UnaryServerInterceptor(),
-			grpc_zap.UnaryServerInterceptor(zap.L(), grpc_zap.WithDecider(func(fullMethodName string, err error) bool { return true })),
 			otelgrpc.UnaryServerInterceptor(),
 			grpc_auth.UnaryServerInterceptor(articleServer.AuthFunc),
 			articleServer.ValidateRequestInterceptor(),
@@ -193,9 +191,12 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		Dispatcher: dispatcher,
 		ShutdownFunc: func() error {
 			grpcServer.GracefulStop()
-			userConn.Close()
-			authConn.Close()
-			return articleServer.Close()
+
+			return errors.Join(
+				userConn.Close(),
+				authConn.Close(),
+				articleServer.Close(),
+			)
 		},
 	}
 }
