@@ -8,7 +8,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/krixlion/dev_forum-auth v0.0.0-20230524155402-1f67014dcb04
-	github.com/krixlion/dev_forum-lib v0.0.0-20230812164714-9b9bed680453
+	github.com/krixlion/dev_forum-lib v0.0.0-20230814132013-5801ca521e8d
 	github.com/krixlion/dev_forum-rabbitmq v0.0.0-20230321225335-aacfca540fbc
 	github.com/krixlion/dev_forum-user v0.0.0-20230428173550-97a13046bc8e
 	github.com/redis/go-redis/extra/redisotel/v9 v9.0.2
@@ -52,6 +52,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.8.0 // indirect
 	github.com/redis/go-redis/extra/rediscmd/v9 v9.0.2 // indirect
 	github.com/sony/gobreaker v0.5.0 // indirect
+	github.com/spf13/afero v1.9.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelutil v0.1.21 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelzap v0.1.21 // indirect

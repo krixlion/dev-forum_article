@@ -18,17 +18,18 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/storage/redis"
 	authPb "github.com/krixlion/dev_forum-auth/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-auth/pkg/tokens/validator"
+	"github.com/krixlion/dev_forum-lib/cert"
 	"github.com/krixlion/dev_forum-lib/env"
 	"github.com/krixlion/dev_forum-lib/event/broker"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
 	"github.com/krixlion/dev_forum-lib/logging"
-	"github.com/krixlion/dev_forum-lib/tls"
 	"github.com/krixlion/dev_forum-lib/tracing"
 	rabbitmq "github.com/krixlion/dev_forum-rabbitmq"
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -127,13 +128,15 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	dispatcher.Register(query)
 
 	tlsCaPath := os.Getenv("TLS_CA_PATH")
-	clientCredentials, err := tls.LoadCA(tlsCaPath)
+	caCertPool, err := cert.LoadCaPool(tlsCaPath)
 	if err != nil {
 		panic(err)
 	}
 
+	clientCreds := credentials.NewClientTLSFromCert(caCertPool, "")
+
 	userConn, err := grpc.Dial("user-service:50051",
-		grpc.WithTransportCredentials(clientCredentials),
+		grpc.WithTransportCredentials(clientCreds),
 		grpc.WithChainUnaryInterceptor(
 			otelgrpc.UnaryClientInterceptor(),
 		),
@@ -144,7 +147,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	userClient := userPb.NewUserServiceClient(userConn)
 
 	authConn, err := grpc.Dial("auth-service:50053",
-		grpc.WithTransportCredentials(clientCredentials),
+		grpc.WithTransportCredentials(clientCreds),
 		grpc.WithChainUnaryInterceptor(
 			otelgrpc.UnaryClientInterceptor(),
 		),
@@ -176,13 +179,15 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 
 	tlsCertPath := os.Getenv("TLS_CERT_PATH")
 	tlsKeyPath := os.Getenv("TLS_KEY_PATH")
-	credentials, err := tls.LoadServerCredentials(tlsCertPath, tlsKeyPath)
+	serverCert, err := cert.LoadX509KeyPair(tlsCertPath, tlsKeyPath)
 	if err != nil {
 		panic(err)
 	}
 
+	creds := credentials.NewServerTLSFromCert(&serverCert)
+
 	grpcServer := grpc.NewServer(
-		grpc.Creds(credentials),
+		grpc.Creds(creds),
 		grpc.ChainStreamInterceptor(
 			otelgrpc.StreamServerInterceptor(),
 			grpc_recovery.StreamServerInterceptor(),
