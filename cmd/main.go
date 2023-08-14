@@ -135,7 +135,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 
 	clientCreds := credentials.NewClientTLSFromCert(caCertPool, "")
 
-	userConn, err := grpc.Dial("user-service:50051",
+	userConn, err := grpc.DialContext(ctx, "user-service:50051",
 		grpc.WithTransportCredentials(clientCreds),
 		grpc.WithChainUnaryInterceptor(
 			otelgrpc.UnaryClientInterceptor(),
@@ -146,7 +146,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 	}
 	userClient := userPb.NewUserServiceClient(userConn)
 
-	authConn, err := grpc.Dial("auth-service:50053",
+	authConn, err := grpc.DialContext(ctx, "auth-service:50053",
 		grpc.WithTransportCredentials(clientCreds),
 		grpc.WithChainUnaryInterceptor(
 			otelgrpc.UnaryClientInterceptor(),
