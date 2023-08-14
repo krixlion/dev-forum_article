@@ -164,15 +164,14 @@ metadata:
 spec:
   secretName: tls-secret-article
   privateKey:
-    algorithm: RSA
-    encoding: PKCS8
-    size: 4096
+    algorithm: ECDSA
+    size: 256
   usages:
     - server auth
     - key encipherment
     - digital signature
   dnsNames:
-    - "*"
+    - "article-service"
   issuerRef:
     name: root-issuer
     kind: Issuer
