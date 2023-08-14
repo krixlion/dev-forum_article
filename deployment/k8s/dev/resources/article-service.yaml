@@ -105,6 +105,7 @@ metadata:
     app: article
 spec:
   storageClassName: local-storage
+  volumeName: hot-reload-pv-article
   accessModes:
     - ReadWriteOnce
   resources:
