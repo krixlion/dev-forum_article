@@ -18,22 +18,13 @@ import (
 	"github.com/krixlion/dev_forum-lib/nulls"
 )
 
-var (
-	port string
-	host string
-	user string
-	pass string
-)
-
-func init() {
-	env.Load("app")
-	port = os.Getenv("DB_WRITE_PORT")
-	host = os.Getenv("DB_WRITE_HOST")
-	pass = os.Getenv("DB_WRITE_PASS")
-	user = os.Getenv("DB_WRITE_USER")
-}
-
 func setUpDB() Eventstore {
+	env.Load("app")
+	port := os.Getenv("DB_WRITE_PORT")
+	host := os.Getenv("DB_WRITE_HOST")
+	pass := os.Getenv("DB_WRITE_PASS")
+	user := os.Getenv("DB_WRITE_USER")
+
 	db, err := MakeDB(port, host, user, pass, nulls.NullLogger{}, nulls.NullTracer{})
 	if err != nil {
 		log.Fatalf("Failed to make DB, err: %s", err)
@@ -44,7 +35,7 @@ func setUpDB() Eventstore {
 
 func Test_Create(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Create() integration test.")
+		t.Skip("Skipping Create() integration test...")
 	}
 
 	type args struct {
@@ -119,7 +110,7 @@ func Test_Create(t *testing.T) {
 
 func Test_Update(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Update() integration test.")
+		t.Skip("Skipping Update() integration test...")
 	}
 
 	type args struct {
@@ -195,7 +186,7 @@ func Test_Update(t *testing.T) {
 
 func Test_Delete(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Delete() integration test.")
+		t.Skip("Skipping Delete() integration test...")
 	}
 
 	type args struct {
@@ -266,6 +257,10 @@ func Test_Delete(t *testing.T) {
 }
 
 func Test_lastRevision(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping lastRevision() integration test...")
+	}
+
 	tests := []struct {
 		desc    string
 		article entity.Article
