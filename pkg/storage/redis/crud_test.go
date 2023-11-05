@@ -16,20 +16,12 @@ import (
 	"github.com/krixlion/dev_forum-lib/nulls"
 )
 
-var (
-	port string
-	host string
-	pass string
-)
-
-func init() {
-	env.Load("app")
-	port = os.Getenv("DB_READ_PORT")
-	host = os.Getenv("DB_READ_HOST")
-	pass = os.Getenv("DB_READ_PASS")
-}
-
 func setUpDB() redis.Redis {
+	env.Load("app")
+	port := os.Getenv("DB_READ_PORT")
+	host := os.Getenv("DB_READ_HOST")
+	pass := os.Getenv("DB_READ_PASS")
+
 	db, err := redis.MakeDB(host, port, pass, nulls.NullLogger{}, nulls.NullTracer{})
 	if err != nil {
 		log.Fatalf("Failed to make DB, err: %s", err)
@@ -47,7 +39,7 @@ func setUpDB() redis.Redis {
 
 func Test_GetMultiple(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping GetMultiple() integration test")
+		t.Skip("Skipping GetMultiple() integration test...")
 	}
 
 	type args struct {
@@ -117,7 +109,7 @@ func Test_GetMultiple(t *testing.T) {
 
 func Test_Get(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Get() integration test")
+		t.Skip("Skipping Get() integration test...")
 	}
 	tests := []struct {
 		name    string
@@ -160,7 +152,7 @@ func Test_Get(t *testing.T) {
 
 func Test_Create(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Create() integration test")
+		t.Skip("Skipping Create() integration test...")
 	}
 
 	tests := []struct {
@@ -221,7 +213,7 @@ func Test_Create(t *testing.T) {
 }
 func Test_Update(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Update() integration test")
+		t.Skip("Skipping Update() integration test...")
 	}
 
 	tests := []struct {
@@ -307,7 +299,7 @@ func Test_Update(t *testing.T) {
 
 func Test_Delete(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping Delete() integration test")
+		t.Skip("Skipping Delete() integration test...")
 	}
 
 	tests := []struct {
