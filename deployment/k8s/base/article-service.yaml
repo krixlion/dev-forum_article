@@ -1,18 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: dev
   name: article-service
-  labels:
-    app: article
-    aggregate: article
-    version: v0.1.0
 spec:
   type: LoadBalancer
-  selector:
-    app: article
-    aggregate: article
-    version: v0.1.0
   ports:
     - name: grpc
       protocol: TCP
@@ -30,28 +21,13 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: dev
-  labels:
-    app: article
-    aggregate: article
-    version: v0.1.0
   name: article-d
 spec:
   replicas: 1
   revisionHistoryLimit: 0
-  selector:
-    matchLabels:
-      app: article
-      aggregate: article
-      version: v0.1.0
   strategy:
     type: Recreate
   template:
-    metadata:
-      labels:
-        app: article
-        aggregate: article
-        version: v0.1.0
     spec:
       restartPolicy: Always
       containers:
@@ -99,10 +75,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  namespace: dev
   name: hot-reload-pvc-article
-  labels:
-    app: article
 spec:
   storageClassName: local-storage
   volumeName: hot-reload-pv-article
@@ -115,10 +88,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  namespace: dev
   name: hot-reload-pv-article
-  labels:
-    app: article
 spec:
   storageClassName: local-storage
   capacity:
@@ -147,10 +117,7 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  namespace: dev
   name: tls-certificate-article
-  labels:
-    app: article
 spec:
   secretName: tls-secret-article
   privateKey:

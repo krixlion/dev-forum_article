@@ -1,28 +1,13 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  namespace: dev
-  labels:
-    database: eventstore
-    aggregate: article
-    version: v0.1.0
   name: eventstore-cluster
 spec:
   serviceName: eventstore-service
   replicas: 1
-  selector:
-    matchLabels:
-      database: eventstore
-      aggregate: article
-      version: v0.1.0
   volumeClaimTemplates:
   - metadata:
       name: eventstore-data
-      namespace: dev
-      labels:
-        version: v0.1.0
-        database: eventstore
-        aggregate: article
     spec:
       accessModes: [ "ReadWriteOnce" ]
       # storageClassName: hostpath
@@ -30,12 +15,6 @@ spec:
         requests:
           storage: 300Mi
   template:
-    metadata:
-      namespace: dev
-      labels:
-        database: eventstore
-        aggregate: article
-        version: v0.1.0
     spec:
       containers:
         - image: eventstore/eventstore:22.10.0-buster-slim
@@ -72,17 +51,8 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  namespace: dev
   name: eventstore-service
-  labels:
-    aggregate: article
-    database: eventstore
-    version: v0.1.0
 spec:
-  selector:
-    aggregate: article
-    database: eventstore
-    version: v0.1.0
   clusterIP: None
   ports:
     - name: http
@@ -92,24 +62,16 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  namespace: dev
   # DON'T PREFIX THE NAME AS "eventstore", USE "eventstoredb" INSTEAD.
   # Kubernetes will configure service using ENV vars prefixed with the service name.
   # EventStoreDB is using configuration from ENV and it reads all values prefixed with "EVENTSTORE_".
   # This will cause the DB to try and apply Kubernetes service settings and either 
   # crash or overwrite some of the settings, for example used http port.
   name: eventstoredb-service-ui
-  labels:
-    aggregate: article
-    database: eventstore
-    version: v0.1.0
 spec:
   type: LoadBalancer
   selector:
     statefulset.kubernetes.io/pod-name: eventstore-cluster-0
-    aggregate: article
-    database: eventstore
-    version: v0.1.0
   ports:
     - name: http
       port: 2113

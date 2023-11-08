@@ -4,6 +4,7 @@ export $(shell sed 's/=.*//' .env)
 
 kubernetes = kubectl -n dev
 docker-compose = docker compose -f docker-compose.dev.yml --env-file .env
+overlays-path = deployment/k8s/overlays
 
 mod-init:
 	go mod init	github.com/krixlion/$(PROJECT_NAME)_$(AGGREGATE_ID)
@@ -30,12 +31,11 @@ k8s-integration-test: # param: args
 	$(kubernetes) exec -it deploy/article-d -- go test -race ${args} ./...  
 
 k8s-test-gen-coverage:
-	$(kubernetes) exec -it deploy/article-d -- go test -coverprofile  cover.out ./...
+	$(kubernetes) exec -it deploy/article-d -- go test -coverprofile cover.out ./...
 	$(kubernetes) exec -it deploy/article-d -- go tool cover -html cover.out -o cover.html
 
-k8s-run-dev:
-	- $(kubernetes) delete -R -f deployment/k8s/dev/resources/
-	$(kubernetes) apply -R -f deployment/k8s/dev/resources/
+k8s-run-dev: k8s-stop-dev
+	$(kubernetes) -k $(overlays-path)/dev apply 
 
 k8s-stop-dev:
-	- $(kubernetes) delete -R -f deployment/k8s/dev/resources/
+	- $(kubernetes) -k $(overlays-path)/dev delete 

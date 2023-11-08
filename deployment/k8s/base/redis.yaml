@@ -1,40 +1,19 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  namespace: dev
   name: redis-cluster
-  labels:
-    database: redis
-    aggregate: article
-    version: v0.1.0
 spec:
   serviceName: redis-service
   volumeClaimTemplates:
   - metadata:
       name: redis-data
-      namespace: dev
-      labels:
-        version: v0.1.0
-        database: redis
-        aggregate: article
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
           storage: 300Mi
   replicas: 1
-  selector:
-    matchLabels:
-      database: redis
-      aggregate: article
-      version: v0.1.0
   template:
-    metadata:
-      namespace: dev
-      labels:
-        database: redis
-        aggregate: article
-        version: v0.1.0
     spec:
       containers:
         - args:
@@ -60,17 +39,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: dev
   name: redis-service
-  labels:
-    database: redis
-    aggregate: article
-    version: v0.1.0
 spec:
-  selector:
-    database: redis
-    aggregate: article
-    version: v0.1.0
   ports:
   - port: 6379
     targetPort: 6379

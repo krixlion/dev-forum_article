@@ -1,0 +1,9 @@
+resources:
+- article-service.yaml
+- eventstore.yaml
+- redis.yaml
+
+commonLabels:
+  app: article
+  aggregate: article
+  version: v0.1.0
