@@ -1,6 +1,8 @@
 module github.com/krixlion/dev_forum-article
 
-go 1.20
+go 1.21
+
+toolchain go1.21.3
 
 require (
 	github.com/EventStore/EventStore-Client-Go/v3 v3.0.0
@@ -8,7 +10,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/krixlion/dev_forum-auth v0.0.0-20230524155402-1f67014dcb04
-	github.com/krixlion/dev_forum-lib v0.0.0-20230814143219-2f7f0396944d
+	github.com/krixlion/dev_forum-lib v0.0.0-20231109223736-d836a1fad578
 	github.com/krixlion/dev_forum-rabbitmq v0.0.0-20230321225335-aacfca540fbc
 	github.com/krixlion/dev_forum-user v0.0.0-20230428173550-97a13046bc8e
 	github.com/redis/go-redis/extra/redisotel/v9 v9.0.2
@@ -68,12 +70,12 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/crypto v0.15.0 // indirect
+	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto v0.0.0-20231016165738-49dd2c1f3d0b // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20231012201019-e917dd12ba7a // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231030173426-d783a09b4405 // indirect
+	google.golang.org/genproto v0.0.0-20231030173426-d783a09b4405 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20231016165738-49dd2c1f3d0b // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
