@@ -2,22 +2,27 @@ FROM golang:1.21.3 AS builder
 
 ENV GO111MODULE=on
 ENV GOFLAGS=-mod=vendor
-ENV APP_HOME /go/src/dev-forum_article
 
-RUN mkdir -p "$APP_HOME"
-WORKDIR "$APP_HOME"
+# Must be set in order to avoid dynamic links to libraries unavailable in alpine/scratch images.
+ENV CGO_ENABLED=0
 
-ADD .. .
+RUN mkdir -p /go/src/dev_forum-article
+WORKDIR /go/src/dev_forum-article
 
-RUN go mod tidy
-RUN go mod vendor
+# Make sure you run `docker build` from the project root or set the context accordingly.
+ADD . .
+
+# RUN go mod tidy
+# RUN go mod vendor
 RUN go build -o main cmd/main.go
 
 FROM scratch
 WORKDIR /app
 
-COPY --from=builder /go/src/dev-forum_article/main .
+COPY --from=builder /go/src/dev_forum-article/main /app/main
+COPY --from=builder /go/src/dev_forum-article/.env /app/.env
 
 EXPOSE 50051
+EXPOSE 2223
 
-CMD [ "./main" ]
+CMD [ "/app/main" ]
