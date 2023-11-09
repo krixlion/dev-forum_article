@@ -5,15 +5,20 @@ metadata:
 spec:
   serviceName: redis-service
   volumeClaimTemplates:
-  - metadata:
-      name: redis-data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 300Mi
+    - metadata:
+        name: redis-data
+        labels:
+          database: redis
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 300Mi
   replicas: 1
   template:
+    metadata:
+      labels:
+        database: redis
     spec:
       containers:
         - args:
@@ -34,13 +39,15 @@ spec:
             # - name: redis-config
             #   mountPath: /usr/local/etc/redis/redis.conf
             #   subPath: redis.conf
-      restartPolicy: Always            
+      restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: redis-service
 spec:
+  selector:
+    database: redis
   ports:
-  - port: 6379
-    targetPort: 6379
+    - port: 6379
+      targetPort: 6379

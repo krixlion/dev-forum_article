@@ -1,0 +1,11 @@
+resources:
+  - ../../base
+
+namespace: stage
+
+replicas:
+  - name: article-d
+    count: 3
+
+configMapGenerator:
+  - name: article-env

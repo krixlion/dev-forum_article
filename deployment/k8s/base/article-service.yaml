@@ -3,16 +3,13 @@ kind: Service
 metadata:
   name: article-service
 spec:
-  type: LoadBalancer
+  selector:
+    app: article
   ports:
     - name: grpc
       protocol: TCP
       port: 50052
       targetPort: 50051
-    - name: delve
-      protocol: TCP
-      port: 2346
-      targetPort: 2345
     - name: metrics
       protocol: TCP
       port: 2224
@@ -23,101 +20,49 @@ kind: Deployment
 metadata:
   name: article-d
 spec:
-  replicas: 1
   revisionHistoryLimit: 0
   strategy:
     type: Recreate
   template:
+    metadata:
+      labels:
+        app: article
     spec:
       restartPolicy: Always
       containers:
-        - env:
-            - name: TESTING
-              value: "nope"
-            - name: TEST_PATH
-              value: github.com/krixlion/dev_forum-article/pkg/event
-            - name: BUILD_ARGS
-              value: -race cmd/main.go
-            - name: DEBUG_PORT
-              value: "2345"
-            - name: RUN_ARGS
-              value: -p 50051
-          image: "krixlion/go-reflex-dlv:1.21.3"
-          name: debug
+        - envFrom:
+            - configMapRef:
+                name: article-env
+          image: krixlion/dev_forum-article:0.1.0
+          imagePullPolicy: IfNotPresent
+          name: server
           ports:
             - name: grpc
               containerPort: 50051
-            - name: delve
-              containerPort: 2345
             - name: metrics
               containerPort: 2223
           resources:
             limits:
-              cpu: 2000m
-              memory: 750Mi
+              cpu: 20m
+              memory: 150Mi
             requests:
-              cpu: 250m
-              memory: 50Mi
+              cpu: 5m
+              memory: 80Mi
           volumeMounts:
-            - name: hot-reload
-              mountPath: /app
             - name: tls-certs
               mountPath: /tls
               readOnly: true
       volumes:
-        - name: hot-reload
-          persistentVolumeClaim:
-            claimName: hot-reload-pvc-article
         - name: tls-certs
           secret:
             secretName: tls-secret-article
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: hot-reload-pvc-article
-spec:
-  storageClassName: local-storage
-  volumeName: hot-reload-pv-article
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 256Mi
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: hot-reload-pv-article
-spec:
-  storageClassName: local-storage
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  volumeMode: Filesystem
-  local:
-    # Windows is mounted in Docker desktop VM under /run/desktop/mnt/host/{drive-letter}/your/path eg:
-    # path: /run/desktop/mnt/host/c/data
-    # Wsl is mounted in Docker desktop VM under /run/desktop/mnt/host/wsl
-    # Locally in WSL it's /mnt/wsl
-    # You should bind your project with k8s-mount for the time of development. Eg:
-    #     mkdir /mnt/wsl/k8s-mount && sudo mount --bind your_project_dir /mnt/wsl/k8s-mount
-    path: /run/desktop/mnt/host/wsl/k8s-mount/article
-  persistentVolumeReclaimPolicy: Delete
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - docker-desktop
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: tls-certificate-article
+  labels:
+    app: article
 spec:
   secretName: tls-secret-article
   privateKey:

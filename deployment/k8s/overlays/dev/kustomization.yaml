@@ -1,4 +1,32 @@
 resources:
-- ../../base
+  - ../../base
+  - dev-volume.yaml
 
 namespace: dev
+
+replicas:
+  - name: article-d
+    count: 1
+
+images:
+  - name: krixlion/dev_forum-article
+    newName: krixlion/go-reflex-dlv
+    newTag: latest
+
+patches:
+  - path: deployment-patches.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: article-d
+
+  - path: service-patches.yaml
+    target:
+      version: v1
+      kind: Service
+      name: article-service
+
+configMapGenerator:
+  - name: article-env
+    env: article.properties

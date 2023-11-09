@@ -1,0 +1,11 @@
+- op: add
+  path: /spec/type
+  value: LoadBalancer
+
+- op: add
+  path: /spec/ports/-
+  value:
+    name: delve
+    protocol: TCP
+    port: 2346
+    targetPort: 2345

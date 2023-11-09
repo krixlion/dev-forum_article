@@ -1,0 +1,33 @@
+# Add a volume mounted to local codebase for instant hot reload.
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: hot-reload
+    persistentVolumeClaim:
+      claimName: hot-reload-pvc-article
+
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    name: hot-reload
+    mountPath: /app
+
+- op: replace
+  path: /spec/template/spec/containers/0/name
+  value: "debug"
+
+- op: add
+  path: /spec/template/spec/containers/0/ports/-
+  value:
+    name: delve
+    containerPort: 2345
+
+- op: add
+  path: /spec/template/spec/containers/0/resources
+  value:
+    limits:
+      cpu: 2000m
+      memory: 750Mi
+    requests:
+      cpu: 500m
+      memory: 250Mi

@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hot-reload-pvc-article
+  labels:
+    app: article
+spec:
+  storageClassName: local-storage
+  volumeName: hot-reload-pv-article
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hot-reload-pv-article
+  labels:
+    app: article
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  local:
+    # Windows is mounted in Docker desktop VM under /run/desktop/mnt/host/{drive-char}/your/path eg:
+    # path: /run/desktop/mnt/host/c/data
+    # Wsl is mounted in Docker desktop VM under /run/desktop/mnt/host/wsl
+    # Locally in WSL it's /mnt/wsl
+    # You should bind your project with k8s-mount for the time of development. Eg:
+    #     mkdir /mnt/wsl/k8s-mount && sudo mount --bind your_project_dir /mnt/wsl/k8s-mount
+    path: /run/desktop/mnt/host/wsl/k8s-mount/article
+  persistentVolumeReclaimPolicy: Delete
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - docker-desktop

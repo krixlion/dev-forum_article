@@ -4,22 +4,27 @@ metadata:
   name: eventstore-cluster
 spec:
   serviceName: eventstore-service
+  selector:
+    matchLabels:
+      database: eventstore
   replicas: 1
   volumeClaimTemplates:
-  - metadata:
-      name: eventstore-data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      # storageClassName: hostpath
-      resources:
-        requests:
-          storage: 300Mi
+    - metadata:
+        name: eventstore-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 300Mi
   template:
+    metadata:
+      labels:
+        database: eventstore
     spec:
       containers:
         - image: eventstore/eventstore:22.10.0-buster-slim
           name: eventstoredb
-          ports: 
+          ports:
             - name: grpc
               containerPort: 2113
               protocol: TCP
@@ -54,6 +59,8 @@ metadata:
   name: eventstore-service
 spec:
   clusterIP: None
+  selector:
+    database: eventstore
   ports:
     - name: http
       port: 2113
@@ -63,14 +70,15 @@ kind: Service
 apiVersion: v1
 metadata:
   # DON'T PREFIX THE NAME AS "eventstore", USE "eventstoredb" INSTEAD.
-  # Kubernetes will configure service using ENV vars prefixed with the service name.
-  # EventStoreDB is using configuration from ENV and it reads all values prefixed with "EVENTSTORE_".
-  # This will cause the DB to try and apply Kubernetes service settings and either 
+  # Kubernetes will configure services using ENV vars prefixed with the service name.
+  # EventStoreDB loads configuration from ENV and reads all values prefixed with "EVENTSTORE_".
+  # This will cause the DB to try and apply Kubernetes service settings and either
   # crash or overwrite some of the settings, for example used http port.
   name: eventstoredb-service-ui
 spec:
   type: LoadBalancer
   selector:
+    database: eventstore
     statefulset.kubernetes.io/pod-name: eventstore-cluster-0
   ports:
     - name: http
