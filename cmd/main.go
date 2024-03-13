@@ -67,12 +67,13 @@ func main() {
 
 	defer func() {
 		cancel()
-		err := service.Close()
-		if err != nil {
+
+		if err := service.Close(); err != nil {
 			logging.Log("Failed to shutdown service", "err", err)
-		} else {
-			logging.Log("Service shutdown properly")
+			return
 		}
+
+		logging.Log("Service shutdown successful")
 	}()
 }
 
