@@ -55,6 +55,7 @@ func (s *ArticleService) Run(ctx context.Context) {
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.grpcPort))
 	if err != nil {
 		s.logger.Log(ctx, "failed to create a listener", "transport", "grpc", "err", err)
+		return
 	}
 
 	go func() {
