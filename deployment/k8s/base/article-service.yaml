@@ -36,6 +36,7 @@ spec:
           image: krixlion/dev_forum-article:0.1.0
           imagePullPolicy: IfNotPresent
           name: server
+          args: []
           ports:
             - name: grpc
               containerPort: 50051
@@ -48,30 +49,3 @@ spec:
             requests:
               cpu: 5m
               memory: 80Mi
-          volumeMounts:
-            - name: tls-certs
-              mountPath: /tls
-              readOnly: true
-      volumes:
-        - name: tls-certs
-          secret:
-            secretName: tls-secret-article
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: tls-certificate-article
-  labels:
-    app: article
-spec:
-  secretName: tls-secret-article
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-  usages:
-    - server auth
-  dnsNames:
-    - "article-service"
-  issuerRef:
-    name: root-issuer
-    kind: Issuer
