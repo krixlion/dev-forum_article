@@ -36,8 +36,8 @@ k8s-test-gen-coverage:
 	$(kubernetes) exec -it deploy/article-d -- go test -coverprofile cover.out ./...
 	$(kubernetes) exec -it deploy/article-d -- go tool cover -html cover.out -o cover.html
 
-k8s-run-dev: k8s-stop-dev
-	$(kubernetes) -k $(overlays-path)/dev apply 
+k8s-run: k8s-stop # param: overlay
+	kubectl -n ${overlay} -k $(overlays-path)/${overlay} apply
 
-k8s-stop-dev:
-	- $(kubernetes) -k $(overlays-path)/dev delete 
+k8s-stop: # param: overlay
+	- kubectl -n ${overlay} -k $(overlays-path)/${overlay} delete 

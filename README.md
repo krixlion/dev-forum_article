@@ -34,10 +34,10 @@ Currently there are `stage` and `dev` overlays available and include any needed 
 
 You can deploy `dev` using `make`.
 ```
-make k8s-run-dev
+make k8s-run overlay=dev
 
 # To delete
-make k8s-stop-dev
+make k8s-stop overlay=dev
 ```
 
 ## Testing
