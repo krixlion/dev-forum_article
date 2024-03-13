@@ -30,6 +30,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -38,23 +39,33 @@ const projectDir = "app"
 const serviceName = "article-service"
 
 var port int
+var isTLS bool
 
 func init() {
 	portFlag := flag.Int("p", 50051, "The gRPC server port")
+	insecureFlag := flag.Bool("insecure", false, "Whether to not use TLS over gRPC")
 	flag.Parse()
 	port = *portFlag
+	isTLS = !(*insecureFlag)
 }
 
 func main() {
 	env.Load(projectDir)
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	shutdownTracing, err := tracing.InitProvider(ctx, serviceName)
 	if err != nil {
 		logging.Log("Failed to initialize tracing", "err", err)
+		return
 	}
 
-	service := service.NewArticleService(port, getServiceDependencies(ctx))
+	deps, err := getServiceDependencies(ctx, isTLS)
+	if err != nil {
+		logging.Log("Failed to initialize service dependenices", "err", err)
+		return
+	}
+	service := service.NewArticleService(port, deps)
 	service.Run(ctx)
 
 	<-ctx.Done()
@@ -74,36 +85,43 @@ func main() {
 
 // getServiceDependencies is a Composition root.
 // Panics on any non-nil error.
-func getServiceDependencies(ctx context.Context) service.Dependencies {
+func getServiceDependencies(ctx context.Context, isTLS bool) (service.Dependencies, error) {
+	clientCreds := insecure.NewCredentials()
+	serverCreds := insecure.NewCredentials()
+
+	if isTLS {
+		caCertPool, err := cert.LoadCaPool(os.Getenv("TLS_CA_PATH"))
+		if err != nil {
+			return service.Dependencies{}, err
+		}
+
+		clientCreds = credentials.NewClientTLSFromCert(caCertPool, "")
+
+		serverCert, err := cert.LoadX509KeyPair(os.Getenv("TLS_CERT_PATH"), os.Getenv("TLS_KEY_PATH"))
+		if err != nil {
+			return service.Dependencies{}, err
+		}
+
+		serverCreds = credentials.NewServerTLSFromCert(&serverCert)
+	}
+
 	tracer := otel.Tracer(serviceName)
 
 	logger, err := logging.NewLogger()
 	if err != nil {
-		panic(err)
+		return service.Dependencies{}, err
 	}
 
-	cmdPort := os.Getenv("DB_WRITE_PORT")
-	cmdHost := os.Getenv("DB_WRITE_HOST")
-	cmdUser := os.Getenv("DB_WRITE_USER")
-	cmdPass := os.Getenv("DB_WRITE_PASS")
-	cmd, err := eventstore.MakeDB(cmdPort, cmdHost, cmdUser, cmdPass, logger, tracer)
+	cmd, err := eventstore.MakeDB(os.Getenv("DB_WRITE_PORT"), os.Getenv("DB_WRITE_HOST"), os.Getenv("DB_WRITE_USER"), os.Getenv("DB_WRITE_PASS"), logger, tracer)
 	if err != nil {
-		panic(err)
+		return service.Dependencies{}, err
 	}
 
-	queryPort := os.Getenv("DB_READ_PORT")
-	queryHost := os.Getenv("DB_READ_HOST")
-	queryPass := os.Getenv("DB_READ_PASS")
-	query, err := redis.MakeDB(queryHost, queryPort, queryPass, logger, tracer)
+	query, err := redis.MakeDB(os.Getenv("DB_READ_HOST"), os.Getenv("DB_READ_PORT"), os.Getenv("DB_READ_PASS"), logger, tracer)
 	if err != nil {
-		panic(err)
+		return service.Dependencies{}, err
 	}
 
-	mqPort := os.Getenv("MQ_PORT")
-	mqHost := os.Getenv("MQ_HOST")
-	mqUser := os.Getenv("MQ_USER")
-	mqPass := os.Getenv("MQ_PASS")
-	consumer := serviceName
 	mqConfig := rabbitmq.Config{
 		QueueSize:         100,
 		MaxWorkers:        100,
@@ -113,27 +131,13 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		ClosedTimeout:     time.Second * 15,
 	}
 
-	messageQueue := rabbitmq.NewRabbitMQ(
-		consumer,
-		mqUser,
-		mqPass,
-		mqHost,
-		mqPort,
-		mqConfig,
+	messageQueue := rabbitmq.NewRabbitMQ(serviceName, os.Getenv("MQ_USER"), os.Getenv("MQ_PASS"), os.Getenv("MQ_HOST"), os.Getenv("MQ_PORT"), mqConfig,
 		rabbitmq.WithLogger(logger),
 		rabbitmq.WithTracer(tracer),
 	)
 	broker := broker.NewBroker(messageQueue, logger, tracer)
 	dispatcher := dispatcher.NewDispatcher(20)
 	dispatcher.Register(query)
-
-	tlsCaPath := os.Getenv("TLS_CA_PATH")
-	caCertPool, err := cert.LoadCaPool(tlsCaPath)
-	if err != nil {
-		panic(err)
-	}
-
-	clientCreds := credentials.NewClientTLSFromCert(caCertPool, "")
 
 	userConn, err := grpc.DialContext(ctx, "user-service:50051",
 		grpc.WithTransportCredentials(clientCreds),
@@ -142,7 +146,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		),
 	)
 	if err != nil {
-		panic(err)
+		return service.Dependencies{}, err
 	}
 	userClient := userPb.NewUserServiceClient(userConn)
 
@@ -153,13 +157,13 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		),
 	)
 	if err != nil {
-		panic(err)
+		return service.Dependencies{}, err
 	}
 	authClient := authPb.NewAuthServiceClient(authConn)
 
 	tokenValidator, err := validator.NewValidator("http://auth-service", validator.DefaultRefreshFunc(authClient, tracer))
 	if err != nil {
-		panic(err)
+		return service.Dependencies{}, err
 	}
 
 	go tokenValidator.Run(ctx)
@@ -177,17 +181,8 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		Tracer:     tracer,
 	})
 
-	tlsCertPath := os.Getenv("TLS_CERT_PATH")
-	tlsKeyPath := os.Getenv("TLS_KEY_PATH")
-	serverCert, err := cert.LoadX509KeyPair(tlsCertPath, tlsKeyPath)
-	if err != nil {
-		panic(err)
-	}
-
-	creds := credentials.NewServerTLSFromCert(&serverCert)
-
 	grpcServer := grpc.NewServer(
-		grpc.Creds(creds),
+		grpc.Creds(serverCreds),
 		grpc.ChainStreamInterceptor(
 			otelgrpc.StreamServerInterceptor(),
 			grpc_recovery.StreamServerInterceptor(),
@@ -211,11 +206,7 @@ func getServiceDependencies(ctx context.Context) service.Dependencies {
 		ShutdownFunc: func() error {
 			grpcServer.GracefulStop()
 
-			return errors.Join(
-				userConn.Close(),
-				authConn.Close(),
-				articleServer.Close(),
-			)
+			return errors.Join(userConn.Close(), authConn.Close(), articleServer.Close())
 		},
-	}
+	}, nil
 }
