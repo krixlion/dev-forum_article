@@ -11,9 +11,9 @@ WORKDIR /go/src/dev_forum-article
 # Make sure you run `docker build` from the project root or set the context accordingly.
 ADD . .
 
-# RUN go mod tidy
-# RUN go mod vendor
-RUN go build -o main cmd/main.go
+RUN go mod tidy && \
+    go mod vendor && \
+    go build -o main cmd/main.go
 
 FROM scratch
 WORKDIR /app
