@@ -15,8 +15,8 @@ Rename `.env.example` to `.env` and fill in missing values.
 ### Using Go command
 You need working [Go environment](https://go.dev/doc/install).
 ```shell
+go mod tidy
 go mod vendor
-
 go build cmd/main.go
 ```
 
