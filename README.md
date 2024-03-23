@@ -34,7 +34,7 @@ docker run -p 50051:50051 -p 2223:2223 krixlion/dev_forum-article:0.1.0
 ```
 
 ### On Kubernetes (recommended)
-You need working [Kubernetes environment](https://kubernetes.io/docs/setup).
+You need a working [Kubernetes environment](https://kubernetes.io/docs/setup).
 
 Kubernetes resources are defined in `deployment/k8s` and deployed using [Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/).
 
