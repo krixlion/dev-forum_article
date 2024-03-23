@@ -40,7 +40,7 @@ Kubernetes resources are defined in `deployment/k8s` and deployed using [Kustomi
 
 Currently there are `stage` and `dev` overlays available and include any needed resources and configs.
 
-Use `make` to apply manifests for dev_forum-auth and needed DBs for either dev or stage environment.
+Use `make` to apply manifests for dev_forum-article and needed DBs for either dev or stage environment.
 ```shell
 make k8s-run overlay=<dev/stage>
 ```
@@ -73,7 +73,7 @@ make k8s-unit-test
 ```
 
 ## Documentation
-For in-detail documentation refer to the [Wiki](https://github.com/krixlion/dev_forum-auth/wiki).
+For in-detail documentation refer to the [Wiki](https://github.com/krixlion/dev_forum-article/wiki).
 
 ## API
 Service is exposing [gRPC](https://grpc.io/docs/what-is-grpc/introduction) API.
