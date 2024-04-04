@@ -5,7 +5,7 @@ namespace: stage
 
 replicas:
   - name: article-d
-    count: 3
+    count: 1
 
 configMapGenerator:
   - name: article-env
