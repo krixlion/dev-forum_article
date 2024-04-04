@@ -1,5 +1,5 @@
 resources:
-  - ../../base
+  - ../tls
 
 namespace: stage
 
