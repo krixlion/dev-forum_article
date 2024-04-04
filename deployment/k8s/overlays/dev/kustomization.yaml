@@ -1,6 +1,5 @@
 resources:
-  - ../../base
-  - cert.yaml
+  - ../tls
   - dev-volume.yaml
 
 namespace: dev

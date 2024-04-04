@@ -1,0 +1,13 @@
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: tls-certs
+    secret:
+      secretName: tls-secret-article
+
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    name: tls-certs
+    mountPath: /tls
+    readOnly: true
