@@ -148,7 +148,7 @@ func Test_Get(t *testing.T) {
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
-			// so be sure to use seperate structs when providing args in order to prevent SEGV.
+			// so be sure to use separate structs when providing args in order to prevent SEGV.
 			if got != tt.want {
 				if !cmp.Equal(got.Article, tt.want.Article, cmpopts.IgnoreUnexported(pb.Article{}, timestamppb.Timestamp{})) {
 					t.Errorf("Articles are not equal:\n Got = %+v\n, want = %+v\n", got.Article, tt.want.Article)
@@ -235,7 +235,7 @@ func Test_Create(t *testing.T) {
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
-			// so be sure to use seperate structs when providing args in order to prevent SEGV.
+			// so be sure to use separate structs when providing args in order to prevent SEGV.
 			if got != tt.dontWant {
 				if _, err := uuid.FromString(got.Id); err != nil {
 					t.Errorf("Article ID is not correct UUID:\n ID = %+v\n err = %+v", got.Id, err)
@@ -320,7 +320,7 @@ func Test_Update(t *testing.T) {
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
-			// so be sure to use seperate structs when providing args in order to prevent SEGV.
+			// so be sure to use separate structs when providing args in order to prevent SEGV.
 			if got != tt.want {
 				if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(emptypb.Empty{})) {
 					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tt.want)
@@ -405,7 +405,7 @@ func Test_Delete(t *testing.T) {
 
 			// Compare in order to avoid nil pointer dereference.
 			// Equals false if both are nil or they point to the same memory address
-			// so be sure to use seperate structs when providing args in order to prevent SEGV.
+			// so be sure to use separate structs when providing args in order to prevent SEGV.
 			if got != tt.want {
 				if !cmp.Equal(got, tt.want, cmpopts.IgnoreUnexported(emptypb.Empty{})) {
 					t.Errorf("Wrong response:\n got = %+v\n want = %+v\n", got, tt.want)

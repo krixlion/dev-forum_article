@@ -56,7 +56,7 @@ func main() {
 
 	deps, err := getServiceDependencies(ctx, serviceName, isTLS)
 	if err != nil {
-		logging.Log("Failed to initialize service dependenices", "err", err)
+		logging.Log("Failed to initialize service dependencies", "err", err)
 		return
 	}
 	service := service.NewArticleService(port, deps)

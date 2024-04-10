@@ -23,7 +23,7 @@ Event data schema:
 
 ## Redis
 Articles are saved in hash maps where a key for each map is `article:<id>`.
-Article IDs are also saved in a seperate string set for faster lookups when quering multiple articles.
+Article IDs are also saved in a separate string set for faster lookups when quering multiple articles.
 
 Each user has its own string set containing IDs of all articles created by that user. Keys for these sets are `users:<userId>`.
 
