@@ -76,7 +76,7 @@ make k8s-unit-test
 For in-detail documentation refer to the [Wiki](https://github.com/krixlion/dev_forum-article/wiki).
 
 ## API
-Service is exposing [gRPC](https://grpc.io/docs/what-is-grpc/introduction) API.
+Service is exposing a [gRPC](https://grpc.io/docs/what-is-grpc/introduction) API.
 
 Regenerate `pb` packages after making changes to any of the `.proto` files located in `api/`.
-You can use [go-grpc-gen](https://github.com/krixlion/go-grpc-gen) containerized tool with `make grpc-gen`.
+You can use [go-grpc-gen](https://github.com/krixlion/go-grpc-gen), a containerized tool for generating gRPC bindings, with `make grpc-gen`.
