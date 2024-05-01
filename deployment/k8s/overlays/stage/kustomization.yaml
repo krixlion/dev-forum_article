@@ -1,5 +1,7 @@
 resources:
-  - ../tls
+  - ../../base
+components:
+  - ../../components/tls
 
 namespace: stage
 
