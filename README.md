@@ -6,7 +6,6 @@ Although this is a one-man project, contributions are welcome.
 Please feel free to open issues or submit pull requests.
 
 # dev_forum-article
-
 Article-service is responsible of storing and operating on articles that users create in dev_forum system.
 
 It's dependent on:
@@ -53,7 +52,7 @@ make k8s-run overlay=<dev/stage>
 ```
 ```shell
 # To delete
-make k8s-stop overlay=dev
+make k8s-stop overlay=<dev/stage>
 ```
 
 ## Testing
