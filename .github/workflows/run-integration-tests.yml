@@ -1,0 +1,44 @@
+name: Run integration tests on Kind cluster
+
+on:
+  push:
+    branches:
+      - dev
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+  pull_request:
+    branches: 
+      - dev
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Kind Cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: testing
+
+      - name: Checkout code at repo root
+        uses: actions/checkout@v4.1.4
+
+      - name: Build and load Docker image to Kind
+        run: |
+          cp .env.example .env
+          docker build . -t krixlion/dev_forum-article:latest -f deployment/Dockerfile --target test
+          kind load docker-image krixlion/dev_forum-article:latest --name "testing"
+          
+      - name: Deploy service
+        run: |
+          # Add namespace if it does not exist.
+          kubectl create namespace test --dry-run=client -o yaml | kubectl apply -f -
+          make k8s-run overlay=test
+          kubectl -n test wait --for=condition=ready pod -l aggregate=article
+          
+      - name: Run tests
+        run: |
+          make k8s-db-migrate-up overlay=test
+          make k8s-integration-test overlay=test args="-timeout=3s"

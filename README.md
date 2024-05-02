@@ -32,7 +32,7 @@ You need a working [Docker environment](https://docs.docker.com/engine).
 You can use the Dockerfile located in `deployment/` to build and run the service on a docker container.
 
 ```shell
-make build-image version=latest` 
+make build-image version=latest 
 ``` 
 
 ```shell
@@ -44,15 +44,16 @@ You need a working [Kubernetes environment](https://kubernetes.io/docs/setup).
 
 Kubernetes resources are defined in `deployment/k8s` and deployed using [Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/).
 
-Currently there are `stage` and `dev` overlays available and include any needed resources and configs.
+Currently there are `stage`, `dev` and `test` overlays available and include any needed resources and configs.
 
 Use `make` to apply manifests for dev_forum-article and needed DBs for either dev or stage environment.
+Every `make` rule that depends on k8s accepts an `overlay` param which indicates the namespace for the rule.
 ```shell
-make k8s-run overlay=<dev/stage>
+make k8s-run overlay=<dev/stage/...>
 ```
 ```shell
 # To delete
-make k8s-stop overlay=<dev/stage>
+make k8s-stop overlay=<dev/stage/...>
 ```
 
 ## Testing
@@ -71,11 +72,11 @@ go tool cover -html cover.out -o cover.html
 
 If the service is deployed on kubernetes you can use `make`.
 ```shell
-make k8s-integration-test
+make k8s-integration-test overlay=<dev/stage/...>
 ```
 or
 ```shell
-make k8s-unit-test
+make k8s-unit-test overlay=<dev/stage/...>
 ```
 
 ## Documentation

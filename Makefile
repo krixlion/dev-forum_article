@@ -2,7 +2,8 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-kubernetes = kubectl -n dev
+overlay ?= dev
+kubernetes = kubectl -n ${overlay}
 docker-compose = docker compose -f docker-compose.dev.yml --env-file .env
 overlays-path = deployment/k8s/overlays
 
@@ -37,7 +38,7 @@ k8s-test-gen-coverage:
 	$(kubernetes) exec -it deploy/article-d -- go tool cover -html cover.out -o cover.html
 
 k8s-run: k8s-stop # param: overlay
-	kubectl -n ${overlay} -k $(overlays-path)/${overlay} apply
+	$(kubernetes) -k $(overlays-path)/${overlay} apply
 
 k8s-stop: # param: overlay
-	- kubectl -n ${overlay} -k $(overlays-path)/${overlay} delete 
+	- $(kubernetes) -k $(overlays-path)/${overlay} delete 
