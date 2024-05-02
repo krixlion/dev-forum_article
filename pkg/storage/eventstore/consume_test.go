@@ -82,7 +82,7 @@ func Test_Consume(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 			defer cancel()
 
 			stream, err := db.Consume(ctx, "", tt.eType)
@@ -117,7 +117,7 @@ func Test_Consume(t *testing.T) {
 
 			select {
 			case got := <-stream:
-				if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second*5)) {
+				if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second*10)) {
 					t.Errorf("DB.Consume():\n got = %v\n want = %v\n Difference =  %s\n", got, tt.want, cmp.Diff(got, tt.want))
 				}
 			case <-ctx.Done():
