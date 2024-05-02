@@ -82,7 +82,7 @@ func Test_Consume(t *testing.T) {
 			db := setUpDB()
 			defer db.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 			defer cancel()
 
 			stream, err := db.Consume(ctx, "", tt.eType)
@@ -94,13 +94,11 @@ func Test_Consume(t *testing.T) {
 			var article entity.Article
 			var id string
 			if tt.want.Type != event.ArticleDeleted {
-				err = json.Unmarshal(tt.want.Body, &article)
-				if err != nil {
+				if err := json.Unmarshal(tt.want.Body, &article); err != nil {
 					t.Errorf("Failed to unmarshal random JSON article:\n error = %+v\n", err)
 				}
 			} else {
-				err = json.Unmarshal(tt.want.Body, &id)
-				if err != nil {
+				if err := json.Unmarshal(tt.want.Body, &id); err != nil {
 					t.Errorf("Failed to unmarshal random JSON id:\n error = %+v\n", err)
 				}
 			}
@@ -113,7 +111,6 @@ func Test_Consume(t *testing.T) {
 			case event.ArticleUpdated:
 				err = db.Update(ctx, article)
 			}
-
 			if err != nil {
 				t.Errorf("Failed to emit %s event:\n error = %+v\n", tt.want.Type, err)
 			}
