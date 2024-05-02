@@ -25,6 +25,7 @@ WORKDIR /app
 COPY --from=builder /go/src/dev_forum-article/main /app/main
 COPY --from=builder /go/src/dev_forum-article/.env /app/.env
 
+# A user is required to allow Go os/user calls without CGO enabled.
 COPY --from=builder /etc/passwd /etc/passwd
 USER app
 
