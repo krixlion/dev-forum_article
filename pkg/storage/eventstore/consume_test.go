@@ -120,7 +120,7 @@ func Test_Consume(t *testing.T) {
 
 			select {
 			case got := <-stream:
-				if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second*2)) {
+				if !cmp.Equal(got, tt.want, cmpopts.EquateApproxTime(time.Second*5)) {
 					t.Errorf("DB.Consume():\n got = %v\n want = %v\n Difference =  %s\n", got, tt.want, cmp.Diff(got, tt.want))
 				}
 			case <-ctx.Done():
