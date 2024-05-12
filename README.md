@@ -6,6 +6,10 @@ Although this is a one-man project, contributions are welcome.
 Please feel free to open issues or submit pull requests.
 
 # dev_forum-article
+[![GoDoc](https://godoc.org/github.com/krixlion/dev_forum-article?status.svg)](https://godoc.org/github.com/krixlion/dev_forum-article)
+[![Go Report Card](https://goreportcard.com/badge/github.com/krixlion/dev_forum-article)](https://goreportcard.com/report/github.com/krixlion/dev_forum-article)
+[![GitHub License](https://img.shields.io/github/license/krixlion/dev_forum-article)](LICENSE)
+
 Article-service is responsible of storing and operating on articles that users create in dev_forum system.
 
 It's dependent on:
