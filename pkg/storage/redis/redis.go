@@ -7,8 +7,9 @@ import (
 	"github.com/krixlion/dev_forum-lib/logging"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
-	_ "go.opentelemetry.io/otel/metric/global"
+	_ "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/embedded"
 )
 
 var _ storage.Getter = (*Redis)(nil)
@@ -26,6 +27,7 @@ type Redis struct {
 
 type tracerProvider struct {
 	tracer trace.Tracer
+	embedded.TracerProvider
 }
 
 func (t tracerProvider) Tracer(string, ...trace.TracerOption) trace.Tracer {
