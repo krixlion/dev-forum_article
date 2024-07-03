@@ -138,22 +138,18 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	dispatcher := dispatcher.NewDispatcher(20)
 	dispatcher.Register(query)
 
-	userConn, err := grpc.DialContext(ctx, os.Getenv("USER_SERVICE_SERVICE_HOST")+":"+os.Getenv("USER_SERVICE_SERVICE_PORT"),
+	userConn, err := grpc.NewClient(os.Getenv("USER_SERVICE_SERVICE_HOST")+":"+os.Getenv("USER_SERVICE_SERVICE_PORT"),
 		grpc.WithTransportCredentials(clientCreds),
-		grpc.WithChainUnaryInterceptor(
-			otelgrpc.UnaryClientInterceptor(),
-		),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
 		return service.Dependencies{}, err
 	}
 	userClient := userPb.NewUserServiceClient(userConn)
 
-	authConn, err := grpc.DialContext(ctx, os.Getenv("AUTH_SERVICE_SERVICE_HOST")+":"+os.Getenv("AUTH_SERVICE_SERVICE_PORT"),
+	authConn, err := grpc.NewClient(os.Getenv("AUTH_SERVICE_SERVICE_HOST")+":"+os.Getenv("AUTH_SERVICE_SERVICE_PORT"),
 		grpc.WithTransportCredentials(clientCreds),
-		grpc.WithChainUnaryInterceptor(
-			otelgrpc.UnaryClientInterceptor(),
-		),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
 		return service.Dependencies{}, err
@@ -182,13 +178,12 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 
 	grpcServer := grpc.NewServer(
 		grpc.Creds(serverCreds),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.ChainStreamInterceptor(
-			otelgrpc.StreamServerInterceptor(),
 			grpc_recovery.StreamServerInterceptor(),
 		),
 		grpc.ChainUnaryInterceptor(
 			grpc_recovery.UnaryServerInterceptor(),
-			otelgrpc.UnaryServerInterceptor(),
 			grpc_auth.UnaryServerInterceptor(articleServer.AuthFunc),
 			articleServer.ValidateRequestInterceptor(),
 		),
