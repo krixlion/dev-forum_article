@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"html"
 
 	"github.com/gofrs/uuid"
@@ -55,6 +56,7 @@ func (server ArticleServer) validateCreate(ctx context.Context, req *pb.CreateAr
 
 	userResp, err := server.services.User.Get(ctx, &userPb.GetUserRequest{Id: article.GetUserId()})
 	if err != nil {
+		err = fmt.Errorf("failed to verify user id: %w", err)
 		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
