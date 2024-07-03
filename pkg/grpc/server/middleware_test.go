@@ -23,7 +23,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func setUpServer(ctx context.Context, getter storage.Getter, writer storage.Writer, userClient userPb.UserServiceClient, mq event.Broker) ArticleServer {
+func setUpServer(getter storage.Getter, writer storage.Writer, userClient userPb.UserServiceClient, mq event.Broker) ArticleServer {
 	s := MakeArticleServer(Dependencies{
 		Services: Services{
 			User: userClient,
@@ -82,7 +82,7 @@ func Test_validateCreate(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			s := setUpServer(ctx, storagemocks.Getter{}, tt.cmd, tt.userClient, tt.broker)
+			s := setUpServer(storagemocks.Getter{}, tt.cmd, tt.userClient, tt.broker)
 
 			got, err := s.validateCreate(ctx, tt.req, tt.handler.GetMock())
 			if (err != nil) != tt.wantErr {
@@ -132,7 +132,7 @@ func Test_validateUpdate(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			s := setUpServer(ctx, tt.query, storagemocks.Writer{}, tt.userClient, tt.broker)
+			s := setUpServer(tt.query, storagemocks.Writer{}, tt.userClient, tt.broker)
 
 			got, err := s.validateUpdate(ctx, tt.req, tt.handler.GetMock())
 			if (err != nil) != tt.wantErr {
@@ -193,7 +193,7 @@ func Test_validateDelete(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			s := setUpServer(ctx, tt.query, storagemocks.Writer{}, tt.userClient, tt.broker)
+			s := setUpServer(tt.query, storagemocks.Writer{}, tt.userClient, tt.broker)
 
 			_, err := s.validateDelete(ctx, tt.req, tt.handler.GetMock())
 			if (err != nil) != tt.wantErr {
