@@ -20,6 +20,9 @@ kind: Deployment
 metadata:
   name: article-d
 spec:
+  selector:
+    matchLabels:
+      app: article
   revisionHistoryLimit: 0
   strategy:
     type: Recreate
