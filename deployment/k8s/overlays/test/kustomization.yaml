@@ -5,7 +5,7 @@ namespace: test
 
 images:
   - name: krixlion/dev_forum-article
-    newTag: latest
+    newTag: testing
 
 replicas:
   - name: article-d
