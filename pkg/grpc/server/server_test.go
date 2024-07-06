@@ -59,18 +59,20 @@ func setUpServer(ctx context.Context, query storage.Getter, cmd storage.Writer, 
 		}
 	}()
 
-	go func() {
-		<-ctx.Done()
-		s.Stop()
-	}()
-
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("passthrough://bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to dial bufnet: %v", err)
 	}
 
-	client := pb.NewArticleServiceClient(conn)
-	return client
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+		if err := conn.Close(); err != nil {
+			log.Fatalf("Failed to close client conn, err: %v", err)
+		}
+	}()
+
+	return pb.NewArticleServiceClient(conn)
 }
 
 func Test_Get(t *testing.T) {
