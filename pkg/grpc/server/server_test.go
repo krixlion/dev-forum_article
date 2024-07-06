@@ -334,10 +334,7 @@ func Test_Update(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	v := gentest.RandomArticle(2, 5)
 	article := &pb.Article{
-		Id:     v.Id,
-		UserId: v.UserId,
-		Title:  v.Title,
-		Body:   v.Body,
+		Id: v.Id,
 	}
 
 	tests := []struct {
