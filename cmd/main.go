@@ -16,6 +16,7 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/service"
 	"github.com/krixlion/dev_forum-article/pkg/storage/eventstore"
 	"github.com/krixlion/dev_forum-article/pkg/storage/redis"
+	"github.com/krixlion/dev_forum-auth/pkg/grpc/auth"
 	authPb "github.com/krixlion/dev_forum-auth/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-auth/pkg/tokens/validator"
 	"github.com/krixlion/dev_forum-lib/cert"
@@ -184,7 +185,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 		),
 		grpc.ChainUnaryInterceptor(
 			grpc_recovery.UnaryServerInterceptor(),
-			grpc_auth.UnaryServerInterceptor(articleServer.AuthFunc),
+			grpc_auth.UnaryServerInterceptor(auth.NewAuthFunc(tokenValidator, tracer)),
 			articleServer.ValidateRequestInterceptor(),
 		),
 	)
