@@ -18,12 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup Kind Cluster
-        uses: helm/kind-action@v1.10.0
+        uses: helm/kind-action@v1
         with:
           cluster_name: testing
 
       - name: Checkout code at repo root
-        uses: actions/checkout@v4.1.4
+        uses: actions/checkout@v4
 
       - name: Build and load Docker image to Kind
         run: |
