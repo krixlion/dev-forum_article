@@ -6,8 +6,8 @@ require (
 	github.com/EventStore/EventStore-Client-Go/v3 v3.0.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/go-cmp v0.6.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/krixlion/dev_forum-auth v0.0.0-20240718124123-a3cffc9363c9
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
+	github.com/krixlion/dev_forum-auth v0.0.0-20240718135143-e5d0d7dbba2d
 	github.com/krixlion/dev_forum-lib v0.0.0-20240718134424-0617cc4ce71d
 	github.com/krixlion/dev_forum-rabbitmq v0.0.0-20240625181130-cb41ab882827
 	github.com/krixlion/dev_forum-user v0.0.0-20230428173550-97a13046bc8e
