@@ -144,7 +144,6 @@ func Test_Get(t *testing.T) {
 
 			if !cmp.Equal(got, tt.want) {
 				t.Errorf("db.Get():\n got = %+v\n want = %+v\n %v", got, tt.want, cmp.Diff(got, tt.want))
-				return
 			}
 		})
 	}
@@ -170,14 +169,14 @@ func Test_Create(t *testing.T) {
 				CreatedAt: func() time.Time {
 					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
 					if err != nil {
-						panic(err)
+						log.Fatal(err)
 					}
 					return time
 				}(),
 				UpdatedAt: func() time.Time {
 					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
 					if err != nil {
-						panic(err)
+						log.Fatal(err)
 					}
 					return time
 				}(),
@@ -206,7 +205,6 @@ func Test_Create(t *testing.T) {
 
 			if !cmp.Equal(got, tt.arg) {
 				t.Errorf("db.Create():\n got = %+v\n want = %+v\n, %v", got, tt.arg, cmp.Diff(got, tt.arg))
-				return
 			}
 		})
 	}
@@ -231,14 +229,14 @@ func Test_Update(t *testing.T) {
 				CreatedAt: func() time.Time {
 					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
 					if err != nil {
-						panic(err)
+						log.Fatal(err)
 					}
 					return time
 				}(),
 				UpdatedAt: func() time.Time {
 					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
 					if err != nil {
-						panic(err)
+						log.Fatal(err)
 					}
 					return time
 				}(),
@@ -254,14 +252,14 @@ func Test_Update(t *testing.T) {
 				CreatedAt: func() time.Time {
 					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
 					if err != nil {
-						panic(err)
+						log.Fatal(err)
 					}
 					return time
 				}(),
 				UpdatedAt: func() time.Time {
 					time, err := time.Parse(time.RFC3339, "2023-01-31T22:58:24Z")
 					if err != nil {
-						panic(err)
+						log.Fatal(err)
 					}
 					return time
 				}(),
@@ -291,7 +289,6 @@ func Test_Update(t *testing.T) {
 
 			if !cmp.Equal(got, tt.arg) && !tt.wantErr {
 				t.Errorf("db.Update():\n got = %+v\n want = %+v\n %v", got, tt.arg, cmp.Diff(got, tt.arg))
-				return
 			}
 		})
 	}
@@ -328,7 +325,6 @@ func Test_Delete(t *testing.T) {
 			_, err = db.Get(ctx, tt.arg)
 			if err == nil {
 				t.Errorf("db.Get() after db.Delete() returned nil error")
-				return
 			}
 		})
 	}
