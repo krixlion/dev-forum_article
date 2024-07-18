@@ -158,7 +158,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	}
 	authClient := authPb.NewAuthServiceClient(authConn)
 
-	tokenValidator, err := validator.NewValidator(tokens.DefaultIssuer, validator.DefaultRefreshFunc(authClient, tracer))
+	tokenValidator, err := validator.NewValidator(tokens.DefaultIssuer, validator.DefaultRefreshFunc(authClient, tracer), validator.WithLogger(logger))
 	if err != nil {
 		return service.Dependencies{}, err
 	}
