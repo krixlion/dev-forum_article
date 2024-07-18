@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
 	"github.com/krixlion/dev_forum-article/internal/gentest"
 	"github.com/krixlion/dev_forum-article/pkg/entity"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
@@ -35,6 +36,42 @@ func setUpServer(getter storage.Getter, writer storage.Writer, userClient userPb
 		Dispatcher: dispatcher.NewDispatcher(0),
 	})
 	return s
+}
+
+func TestArticleServer_AuthMatcher(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		want   bool
+	}{
+		{
+			name:   "Test returns false for Get method",
+			method: "Get",
+			want:   false,
+		},
+		{
+			name:   "Test returns false for Create method",
+			method: "GetStream",
+			want:   false,
+		},
+		{
+			name:   "Test returns true for Update method",
+			method: "Update",
+			want:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			callMeta := interceptors.CallMeta{Method: tt.method, Service: "article.ArticleService"}
+			got := ArticleServer{}.AuthMatcher().Match(ctx, callMeta)
+			if got != tt.want {
+				t.Errorf("ArticleServer.AuthMatcher():\n got = %v\n want = %v\n", got, tt.want)
+			}
+		})
+	}
 }
 
 func Test_validateCreate(t *testing.T) {

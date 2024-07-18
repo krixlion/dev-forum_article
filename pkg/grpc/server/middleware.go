@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"html"
+	"slices"
 
 	"github.com/gofrs/uuid"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-lib/tracing"
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
@@ -14,6 +17,18 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// AuthMatcher returns a callback used to determine whether current gRPC path should be protected by auth middleware.
+func (ArticleServer) AuthMatcher() selector.Matcher {
+	return selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
+		// List of paths excluded from auth middleware.
+		disabledAuthPaths := []string{
+			"/article.ArticleService/GetStream",
+			"/article.ArticleService/Get",
+		}
+		return !slices.Contains(disabledAuthPaths, callMeta.FullMethod())
+	})
+}
 
 func (s ArticleServer) ValidateRequestInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {

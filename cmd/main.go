@@ -11,6 +11,7 @@ import (
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/krixlion/dev_forum-article/pkg/grpc/server"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-article/pkg/service"
@@ -186,7 +187,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 		),
 		grpc.ChainUnaryInterceptor(
 			grpc_recovery.UnaryServerInterceptor(),
-			grpc_auth.UnaryServerInterceptor(auth.NewAuthFunc(tokenValidator, tracer)),
+			selector.UnaryServerInterceptor(grpc_auth.UnaryServerInterceptor(auth.NewAuthFunc(tokenValidator, tracer)), articleServer.AuthMatcher()),
 			articleServer.ValidateRequestInterceptor(),
 		),
 	)
