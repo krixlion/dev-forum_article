@@ -35,7 +35,7 @@ func Test_Consume(t *testing.T) {
 					a.Id = "test"
 					json, err := json.Marshal(a)
 					if err != nil {
-						panic("Failed to marshal article, err = " + err.Error())
+						t.Fatalf("Failed to marshal article, err: %v", err)
 					}
 					return json
 				}(),
@@ -53,7 +53,7 @@ func Test_Consume(t *testing.T) {
 					a.Id = "test"
 					json, err := json.Marshal(a)
 					if err != nil {
-						panic("Failed to marshal article, err = " + err.Error())
+						t.Fatalf("Failed to marshal article, err: %v", err)
 					}
 					return json
 				}(),
@@ -69,7 +69,7 @@ func Test_Consume(t *testing.T) {
 				Body: func() []byte {
 					id, err := json.Marshal("test")
 					if err != nil {
-						panic("Failed to unmarshal, err = " + err.Error())
+						t.Fatalf("Failed to unmarshal, err: %v", err)
 					}
 					return id
 				}(),
@@ -79,15 +79,15 @@ func Test_Consume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			db := setUpDB()
-			defer db.Close()
-
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 			defer cancel()
 
+			db := setUpDB()
+			defer db.Close()
+
 			stream, err := db.Consume(ctx, "", tt.eType)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("DB.Consume():\n error = %v\n, wantErr %v\n", err, tt.wantErr)
+				t.Errorf("DB.Consume():\n error = %v\n wantErr = %v\n", err, tt.wantErr)
 				return
 			}
 
@@ -96,10 +96,12 @@ func Test_Consume(t *testing.T) {
 			if tt.want.Type != event.ArticleDeleted {
 				if err := json.Unmarshal(tt.want.Body, &article); err != nil {
 					t.Errorf("Failed to unmarshal random JSON article:\n error = %+v\n", err)
+					return
 				}
 			} else {
 				if err := json.Unmarshal(tt.want.Body, &id); err != nil {
 					t.Errorf("Failed to unmarshal random JSON id:\n error = %+v\n", err)
+					return
 				}
 			}
 
@@ -123,6 +125,46 @@ func Test_Consume(t *testing.T) {
 			case <-ctx.Done():
 				t.Error("Timed out waiting for an event")
 				return
+			}
+		})
+	}
+}
+
+func Test_isZero(t *testing.T) {
+	type args struct {
+		e event.Event
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Test returns true on zero value",
+			args: args{
+				e: event.Event{},
+			},
+			want: true,
+		},
+		{
+			name: "Test returns false on non zero value",
+			args: args{
+				e: event.Event{AggregateId: "A"},
+			},
+			want: false,
+		},
+		{
+			name: "Test returns false on zero value with slice initialized",
+			args: args{
+				e: event.Event{Body: []byte{}},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isZero(tt.args.e); got != tt.want {
+				t.Errorf("isZero():\n got = %v\n want = %v\n", got, tt.want)
 			}
 		})
 	}

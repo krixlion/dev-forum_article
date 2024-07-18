@@ -3,7 +3,7 @@ module github.com/krixlion/dev_forum-article
 go 1.22
 
 require (
-	github.com/EventStore/EventStore-Client-Go/v3 v3.0.0
+	github.com/EventStore/EventStore-Client-Go/v4 v4.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/go-cmp v0.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
@@ -32,6 +32,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect

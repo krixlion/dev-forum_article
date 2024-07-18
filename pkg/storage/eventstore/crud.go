@@ -9,7 +9,7 @@ import (
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/tracing"
 
-	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
+	"github.com/EventStore/EventStore-Client-Go/v4/esdb"
 )
 
 func addArticlesPrefix(v string) string {
@@ -22,8 +22,10 @@ func (db Eventstore) Create(ctx context.Context, article entity.Article) error {
 
 	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article)
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return err
 	}
+
 	data, err := json.Marshal(e)
 	if err != nil {
 		tracing.SetSpanErr(span, err)
@@ -35,10 +37,9 @@ func (db Eventstore) Create(ctx context.Context, article entity.Article) error {
 		EventType:   string(e.Type),
 		Data:        data,
 	}
-	streamID := addArticlesPrefix(article.Id)
 
-	_, err = db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData)
-	if err != nil {
+	streamID := addArticlesPrefix(article.Id)
+	if _, err := db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData); err != nil {
 		tracing.SetSpanErr(span, err)
 		return err
 	}
@@ -52,6 +53,7 @@ func (db Eventstore) Update(ctx context.Context, article entity.Article) error {
 
 	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article)
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -61,7 +63,7 @@ func (db Eventstore) Update(ctx context.Context, article entity.Article) error {
 		return err
 	}
 
-	lastEvent, err := db.lastRevision(ctx, article.Id)
+	lastEvent, err := db.getLastRevision(ctx, article.Id)
 	if err != nil {
 		return err
 	}
@@ -92,6 +94,7 @@ func (db Eventstore) Delete(ctx context.Context, id string) error {
 
 	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id)
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -108,9 +111,7 @@ func (db Eventstore) Delete(ctx context.Context, id string) error {
 	}
 	streamID := addArticlesPrefix(id)
 
-	_, err = db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData)
-
-	if err != nil {
+	if _, err := db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData); err != nil {
 		tracing.SetSpanErr(span, err)
 		return err
 	}
@@ -118,7 +119,7 @@ func (db Eventstore) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (db Eventstore) lastRevision(ctx context.Context, articleId string) (*esdb.ResolvedEvent, error) {
+func (db Eventstore) getLastRevision(ctx context.Context, articleId string) (*esdb.ResolvedEvent, error) {
 	ctx, span := db.tracer.Start(ctx, "esdb.lastRevision")
 	defer span.End()
 

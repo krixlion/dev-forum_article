@@ -3,7 +3,7 @@ package eventstore
 import (
 	"fmt"
 
-	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
+	"github.com/EventStore/EventStore-Client-Go/v4/esdb"
 	"github.com/krixlion/dev_forum-article/pkg/storage"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/logging"
