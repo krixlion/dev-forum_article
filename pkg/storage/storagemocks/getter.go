@@ -26,8 +26,3 @@ func (m Getter) GetMultiple(ctx context.Context, offset string, limit string) ([
 	args := m.Called(ctx, offset, limit)
 	return args.Get(0).([]entity.Article), args.Error(1)
 }
-
-func (m Getter) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}

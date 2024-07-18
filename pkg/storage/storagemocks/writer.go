@@ -31,8 +31,3 @@ func (m Writer) Delete(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
-
-func (m Writer) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}

@@ -132,11 +132,11 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 		ClosedTimeout:     time.Second * 15,
 	}
 
-	messageQueue := rabbitmq.NewRabbitMQ(serviceName, os.Getenv("MQ_USER"), os.Getenv("MQ_PASS"), os.Getenv("MQ_HOST"), os.Getenv("MQ_PORT"), mqConfig,
+	mq := rabbitmq.NewRabbitMQ(serviceName, os.Getenv("MQ_USER"), os.Getenv("MQ_PASS"), os.Getenv("MQ_HOST"), os.Getenv("MQ_PORT"), mqConfig,
 		rabbitmq.WithLogger(logger),
 		rabbitmq.WithTracer(tracer),
 	)
-	broker := broker.NewBroker(messageQueue, logger, tracer)
+	broker := broker.NewBroker(mq, logger, tracer)
 	dispatcher := dispatcher.NewDispatcher(20)
 	dispatcher.Register(query)
 
@@ -201,7 +201,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 		Dispatcher: dispatcher,
 		ShutdownFunc: func() error {
 			grpcServer.GracefulStop()
-			return errors.Join(userConn.Close(), authConn.Close(), articleServer.Close(), shutdownTracing(), logger.Sync())
+			return errors.Join(userConn.Close(), authConn.Close(), mq.Close(), query.Close(), cmd.Close(), shutdownTracing(), logger.Sync())
 		},
 	}, nil
 }

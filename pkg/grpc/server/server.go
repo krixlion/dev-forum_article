@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
@@ -56,10 +55,6 @@ func MakeArticleServer(d Dependencies) ArticleServer {
 		tokenValidator: d.Validator,
 		tracer:         d.Tracer,
 	}
-}
-
-func (s ArticleServer) Close() error {
-	return errors.Join(s.cmd.Close(), s.query.Close())
 }
 
 func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
