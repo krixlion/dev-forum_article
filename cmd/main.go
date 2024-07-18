@@ -18,6 +18,7 @@ import (
 	"github.com/krixlion/dev_forum-article/pkg/storage/redis"
 	"github.com/krixlion/dev_forum-auth/pkg/grpc/auth"
 	authPb "github.com/krixlion/dev_forum-auth/pkg/grpc/v1"
+	"github.com/krixlion/dev_forum-auth/pkg/tokens"
 	"github.com/krixlion/dev_forum-auth/pkg/tokens/validator"
 	"github.com/krixlion/dev_forum-lib/cert"
 	"github.com/krixlion/dev_forum-lib/env"
@@ -157,7 +158,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	}
 	authClient := authPb.NewAuthServiceClient(authConn)
 
-	tokenValidator, err := validator.NewValidator("http://auth-service", validator.DefaultRefreshFunc(authClient, tracer))
+	tokenValidator, err := validator.NewValidator(tokens.DefaultIssuer, validator.DefaultRefreshFunc(authClient, tracer))
 	if err != nil {
 		return service.Dependencies{}, err
 	}
