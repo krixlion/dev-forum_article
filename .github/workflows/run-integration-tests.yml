@@ -40,7 +40,7 @@ jobs:
 
       - name: Run tests
         run: |
-          make k8s-integration-test overlay=test args="-timeout=10s"
+          make k8s-test-gen-coverage overlay=test args="-timeout=10s"
           # Download coverage from the pod to the local filesystem so that it's available for the coveralls report.
           kubectl exec -n test deploy/article-d -- cat cover.out > cover.out
 
