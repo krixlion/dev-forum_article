@@ -16,15 +16,15 @@ RUN go build -o main cmd/main.go
 FROM base as test
 # Must be set in order to enable `go -race` flag.
 ENV CGO_ENABLED=1
-WORKDIR /app
 USER app
+WORKDIR /app
 COPY --from=build --chown=app:app /go/src/dev_forum-article/ /app/
 RUN go build -o main cmd/main.go
 ENTRYPOINT [ "/app/main" ]
 
 FROM scratch as prod
-WORKDIR /app
 USER app
+WORKDIR /app
 
 COPY --from=build  /go/src/dev_forum-article/main /app/main
 COPY --from=build /go/src/dev_forum-article/.env /app/.env
