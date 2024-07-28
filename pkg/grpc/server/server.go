@@ -10,6 +10,7 @@ import (
 	"github.com/krixlion/dev_forum-auth/pkg/tokens"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/event/dispatcher"
+	"github.com/krixlion/dev_forum-lib/tracing"
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"go.opentelemetry.io/otel/trace"
 
@@ -64,15 +65,18 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	article := articleFromPB(req.GetArticle())
 
 	if err := s.cmd.Create(ctx, article); err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article)
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -91,15 +95,18 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 	id := req.GetId()
 
 	if err := s.cmd.Delete(ctx, id); err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id)
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -116,15 +123,18 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 	article := articleFromPB(req.GetArticle())
 
 	if err := s.cmd.Update(ctx, article); err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article)
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -140,6 +150,7 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 
 	article, err := s.query.Get(ctx, req.GetId())
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, "Failed to get article: %v", err)
 	}
 
@@ -156,12 +167,12 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 }
 
 func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleService_GetStreamServer) error {
-	ctx := stream.Context()
-	ctx, span := s.tracer.Start(ctx, "server.GetStream")
+	ctx, span := s.tracer.Start(stream.Context(), "server.GetStream")
 	defer span.End()
 
 	articles, err := s.query.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -170,6 +181,8 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 		case <-ctx.Done():
 			return nil
 		default:
+			_, span := s.tracer.Start(stream.Context(), "server.GetStream send")
+
 			article := pb.Article{
 				Id:        v.Id,
 				UserId:    v.UserId,
@@ -180,8 +193,11 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 			}
 
 			if err := stream.Send(&article); err != nil {
+				tracing.SetSpanErr(span, err)
+				span.End()
 				return err
 			}
+			span.End()
 		}
 	}
 	return nil

@@ -61,6 +61,7 @@ func (server ArticleServer) validateCreate(ctx context.Context, req *pb.CreateAr
 	// Assign a new ID: do not let users assign custom ID to articles.
 	id, err := uuid.NewV4()
 	if err != nil {
+		tracing.SetSpanErr(span, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	article.Id = id.String()
