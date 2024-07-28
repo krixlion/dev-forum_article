@@ -32,6 +32,5 @@ COPY --from=build /go/src/dev_forum-article/.env /app/.env
 COPY --from=build /etc/passwd /etc/passwd
 
 EXPOSE 50051
-EXPOSE 2223
 
 ENTRYPOINT [ "/app/main" ]
