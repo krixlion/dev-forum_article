@@ -16,6 +16,7 @@ import (
 	"github.com/krixlion/dev_forum-lib/env"
 	"github.com/krixlion/dev_forum-lib/event"
 	"github.com/krixlion/dev_forum-lib/nulls"
+	"github.com/krixlion/dev_forum-lib/tracing"
 )
 
 func setUpDB() Eventstore {
@@ -288,7 +289,7 @@ func Test_getLastRevision(t *testing.T) {
 				return
 			}
 
-			want, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, tt.article)
+			want, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, tt.article, tracing.ExtractMetadataFromContext(ctx))
 			if err != nil {
 				t.Errorf("Eventstore.getLastRevision() error during prep = %v", err)
 				return

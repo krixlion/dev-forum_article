@@ -39,6 +39,7 @@ func Test_Consume(t *testing.T) {
 					}
 					return json
 				}(),
+				Metadata:  map[string]string{},
 				Timestamp: time.Now().Round(0),
 			},
 		},
@@ -57,6 +58,7 @@ func Test_Consume(t *testing.T) {
 					}
 					return json
 				}(),
+				Metadata:  map[string]string{},
 				Timestamp: time.Now().Round(0),
 			},
 		},
@@ -73,6 +75,7 @@ func Test_Consume(t *testing.T) {
 					}
 					return id
 				}(),
+				Metadata:  map[string]string{},
 				Timestamp: time.Now().Round(0),
 			},
 		},
@@ -115,6 +118,7 @@ func Test_Consume(t *testing.T) {
 			}
 			if err != nil {
 				t.Errorf("Failed to emit %s event:\n error = %+v\n", tt.want.Type, err)
+				return
 			}
 
 			select {
@@ -124,7 +128,6 @@ func Test_Consume(t *testing.T) {
 				}
 			case <-ctx.Done():
 				t.Error("Timed out waiting for an event")
-				return
 			}
 		})
 	}

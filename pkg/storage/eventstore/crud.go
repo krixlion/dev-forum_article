@@ -20,7 +20,7 @@ func (db Eventstore) Create(ctx context.Context, article entity.Article) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Create")
 	defer span.End()
 
-	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article)
+	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return err
@@ -51,7 +51,7 @@ func (db Eventstore) Update(ctx context.Context, article entity.Article) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Update")
 	defer span.End()
 
-	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article)
+	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return err
@@ -92,7 +92,7 @@ func (db Eventstore) Delete(ctx context.Context, id string) error {
 	ctx, span := db.tracer.Start(ctx, "esdb.Delete")
 	defer span.End()
 
-	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id)
+	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return err

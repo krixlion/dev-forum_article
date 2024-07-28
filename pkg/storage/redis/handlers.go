@@ -32,7 +32,7 @@ func (db Redis) deleteAllArticlesBelongingToUser() event.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
-		ctx, span := db.tracer.Start(ctx, "deleteAllArticlesBelongingToUser")
+		ctx, span := db.tracer.Start(tracing.InjectMetadataIntoContext(ctx, e.Metadata), "deleteAllArticlesBelongingToUser")
 		defer span.End()
 
 		var userId string
@@ -63,7 +63,7 @@ func (db Redis) createArticle() event.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
-		ctx, span := db.tracer.Start(ctx, "query.createArticle")
+		ctx, span := db.tracer.Start(tracing.InjectMetadataIntoContext(ctx, e.Metadata), "query.createArticle")
 		defer span.End()
 
 		var article entity.Article
@@ -85,7 +85,7 @@ func (db Redis) updateArticle() event.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
-		ctx, span := db.tracer.Start(ctx, "query.updateArticle")
+		ctx, span := db.tracer.Start(tracing.InjectMetadataIntoContext(ctx, e.Metadata), "query.updateArticle")
 		defer span.End()
 
 		var article entity.Article
@@ -107,7 +107,7 @@ func (db Redis) deleteArticle() event.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
-		ctx, span := db.tracer.Start(ctx, "query.deleteArticle")
+		ctx, span := db.tracer.Start(tracing.InjectMetadataIntoContext(ctx, e.Metadata), "query.deleteArticle")
 		defer span.End()
 
 		var id string

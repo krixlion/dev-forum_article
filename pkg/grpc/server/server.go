@@ -69,7 +69,7 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article)
+	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -99,7 +99,7 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id)
+	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -127,7 +127,7 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
-	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article)
+	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
 		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
