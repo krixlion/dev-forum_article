@@ -58,10 +58,14 @@ func (s *ArticleService) Run(ctx context.Context) {
 		return
 	}
 
-	go func() {
-		s.dispatcher.AddEventProviders(s.eventProviders(ctx)...)
-		s.dispatcher.Run(ctx)
-	}()
+	providers, err := s.eventProviders(ctx)
+	if err != nil {
+		s.logger.Log(ctx, "failed to register event providers", "transport", "pubsub", "err", err)
+		return
+	}
+
+	s.dispatcher.AddEventProviders(providers...)
+	go s.dispatcher.Run(ctx)
 
 	s.logger.Log(ctx, "listening", "transport", "grpc", "port", s.grpcPort)
 
@@ -70,12 +74,13 @@ func (s *ArticleService) Run(ctx context.Context) {
 	}
 }
 
-func (s *ArticleService) eventProviders(ctx context.Context) []<-chan event.Event {
+func (s *ArticleService) eventProviders(ctx context.Context) ([]<-chan event.Event, error) {
 	eTypes := map[string]event.EventType{
 		"deleteAllArticlesBelongingToUser": event.UserDeleted,
 		"SyncDeletedArticles":              event.ArticleDeleted,
 		"SyncCreatedArticles":              event.ArticleCreated,
 		"SyncUpdatedArticles":              event.ArticleUpdated,
+		"SyncKeySet":                       event.KeySetUpdated,
 	}
 
 	chans := make([]<-chan event.Event, 0, len(eTypes))
@@ -83,13 +88,13 @@ func (s *ArticleService) eventProviders(ctx context.Context) []<-chan event.Even
 	for queueName, eType := range eTypes {
 		ch, err := s.broker.Consume(ctx, queueName, eType)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		chans = append(chans, ch)
 	}
 
-	return chans
+	return chans, nil
 }
 
 func (s *ArticleService) Close() error {
