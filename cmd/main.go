@@ -81,7 +81,6 @@ func main() {
 }
 
 // getServiceDependencies is a Composition root.
-// Panics on any non-nil error.
 func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool) (service.Dependencies, error) {
 	clientCreds := insecure.NewCredentials()
 	serverCreds := insecure.NewCredentials()
