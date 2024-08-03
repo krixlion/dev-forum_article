@@ -139,7 +139,6 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	)
 	broker := broker.NewBroker(mq, logger, tracer)
 	dispatcher := dispatcher.NewDispatcher(20)
-	dispatcher.Register(query)
 
 	userConn, err := grpc.NewClient(os.Getenv("USER_SERVICE_SERVICE_HOST")+":"+os.Getenv("USER_SERVICE_SERVICE_PORT"),
 		grpc.WithTransportCredentials(clientCreds),
@@ -165,6 +164,8 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	}
 
 	go tokenValidator.Run(ctx)
+
+	dispatcher.Register(tokenValidator, query)
 
 	articleServer := server.MakeArticleServer(server.Dependencies{
 		Services: server.Services{
