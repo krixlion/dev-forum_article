@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -112,6 +113,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	if err != nil {
 		return service.Dependencies{}, err
 	}
+	grpclog.SetLoggerV2(logger)
 
 	cmd, err := eventstore.MakeDB(os.Getenv("DB_WRITE_PORT"), os.Getenv("DB_WRITE_HOST"), os.Getenv("DB_WRITE_USER"), os.Getenv("DB_WRITE_PASS"), logger, tracer)
 	if err != nil {
