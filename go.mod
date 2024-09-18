@@ -1,6 +1,6 @@
 module github.com/krixlion/dev_forum-article
 
-go 1.22
+go 1.23
 
 require (
 	github.com/EventStore/EventStore-Client-Go/v4 v4.1.0

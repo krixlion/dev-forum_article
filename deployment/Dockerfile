@@ -1,4 +1,4 @@
-FROM golang:1.22 AS base
+FROM golang:1.23 AS base
 WORKDIR /go/src/dev_forum-article
 ENV GO111MODULE=on
 ENV GOFLAGS=-mod=vendor
