@@ -11,6 +11,8 @@ import (
 	"github.com/EventStore/EventStore-Client-Go/v4/esdb"
 )
 
+var errStreamSubscriptrionDropped = errors.New("eventstore stream subscription dropped")
+
 // Consume listens to article event streams with given event type for events and sends them through the returned channel.
 func (db Eventstore) Consume(ctx context.Context, _ string, eType event.EventType) (<-chan event.Event, error) {
 	options := esdb.SubscribeToAllOptions{
@@ -37,7 +39,7 @@ func (db Eventstore) Consume(ctx context.Context, _ string, eType event.EventTyp
 				subEvent := stream.Recv()
 				e, err := parseEvent(subEvent)
 				if err != nil {
-					if err.Error() == "eventstore stream subscription dropped" {
+					if errors.Is(err, errStreamSubscriptrionDropped) {
 						stream.Close()
 						break
 					}
@@ -58,8 +60,7 @@ func (db Eventstore) Consume(ctx context.Context, _ string, eType event.EventTyp
 
 func parseEvent(subEvent *esdb.SubscriptionEvent) (event.Event, error) {
 	if subEvent.SubscriptionDropped != nil {
-		err := errors.New("eventstore stream subscription dropped")
-		return event.Event{}, err
+		return event.Event{}, errStreamSubscriptrionDropped
 	}
 
 	if subEvent.EventAppeared == nil {
