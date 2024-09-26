@@ -16,19 +16,18 @@ func addArticlesPrefix(v string) string {
 	return fmt.Sprintf("%s-%s", "article", v)
 }
 
-func (db Eventstore) Create(ctx context.Context, article entity.Article) error {
+func (db Eventstore) Create(ctx context.Context, article entity.Article) (err error) {
 	ctx, span := db.tracer.Start(ctx, "esdb.Create")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	data, err := json.Marshal(e)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -40,26 +39,24 @@ func (db Eventstore) Create(ctx context.Context, article entity.Article) error {
 
 	streamID := addArticlesPrefix(article.Id)
 	if _, err := db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData); err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	return nil
 }
 
-func (db Eventstore) Update(ctx context.Context, article entity.Article) error {
+func (db Eventstore) Update(ctx context.Context, article entity.Article) (err error) {
 	ctx, span := db.tracer.Start(ctx, "esdb.Update")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	data, err := json.Marshal(e)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -81,26 +78,24 @@ func (db Eventstore) Update(ctx context.Context, article entity.Article) error {
 
 	_, err = db.client.AppendToStream(ctx, streamID, appendOpts, eventData)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	return nil
 }
 
-func (db Eventstore) Delete(ctx context.Context, id string) error {
+func (db Eventstore) Delete(ctx context.Context, id string) (err error) {
 	ctx, span := db.tracer.Start(ctx, "esdb.Delete")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	e, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	data, err := json.Marshal(e)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -112,16 +107,16 @@ func (db Eventstore) Delete(ctx context.Context, id string) error {
 	streamID := addArticlesPrefix(id)
 
 	if _, err := db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData); err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	return nil
 }
 
-func (db Eventstore) getLastRevision(ctx context.Context, articleId string) (*esdb.ResolvedEvent, error) {
+func (db Eventstore) getLastRevision(ctx context.Context, articleId string) (_ *esdb.ResolvedEvent, err error) {
 	ctx, span := db.tracer.Start(ctx, "esdb.lastRevision")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	readOpts := esdb.ReadStreamOptions{
 		Direction: esdb.Backwards,
@@ -132,14 +127,12 @@ func (db Eventstore) getLastRevision(ctx context.Context, articleId string) (*es
 
 	stream, err := db.client.ReadStream(ctx, streamID, readOpts, 1)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 	defer stream.Close()
 
 	lastEvent, err := stream.Recv()
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 

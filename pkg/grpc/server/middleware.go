@@ -45,23 +45,21 @@ func (s ArticleServer) ValidateRequestInterceptor() grpc.UnaryServerInterceptor 
 	}
 }
 
-func (server ArticleServer) validateCreate(ctx context.Context, req *pb.CreateArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
+func (server ArticleServer) validateCreate(ctx context.Context, req *pb.CreateArticleRequest, handler grpc.UnaryHandler) (_ interface{}, err error) {
 	ctx, span := server.tracer.Start(ctx, "server.validateCreate", trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	article := req.GetArticle()
 
 	if article == nil {
-		err := status.Error(codes.FailedPrecondition, "Article not provided")
-		tracing.SetSpanErr(span, err)
-		return nil, err
+		return nil, status.Error(codes.FailedPrecondition, "Article not provided")
 	}
 
 	// Sanitize user input.
 	// Assign a new ID: do not let users assign custom ID to articles.
 	id, err := uuid.NewV4()
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	article.Id = id.String()
@@ -72,30 +70,25 @@ func (server ArticleServer) validateCreate(ctx context.Context, req *pb.CreateAr
 
 	userResp, err := server.services.User.Get(ctx, &userPb.GetUserRequest{Id: article.GetUserId()})
 	if err != nil {
-		err = fmt.Errorf("failed to verify user id: %w", err)
-		tracing.SetSpanErr(span, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to verify user id: %w", err)
 	}
 
 	if userResp.GetUser().GetId() == "" {
-		err := status.Error(codes.FailedPrecondition, "User with provided ID does not exist")
-		tracing.SetSpanErr(span, err)
-		return nil, err
+		return nil, status.Error(codes.FailedPrecondition, "User with provided ID does not exist")
 	}
 
 	return handler(ctx, req)
 }
 
-func (server ArticleServer) validateUpdate(ctx context.Context, req *pb.UpdateArticleRequest, handler grpc.UnaryHandler) (interface{}, error) {
+func (server ArticleServer) validateUpdate(ctx context.Context, req *pb.UpdateArticleRequest, handler grpc.UnaryHandler) (_ interface{}, err error) {
 	ctx, span := server.tracer.Start(ctx, "server.validateUpdate")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	article := req.GetArticle()
 
 	if article == nil {
-		err := status.Error(codes.FailedPrecondition, "Article not provided")
-		tracing.SetSpanErr(span, err)
-		return nil, err
+		return nil, status.Error(codes.FailedPrecondition, "Article not provided")
 	}
 
 	// Sanitize user input.

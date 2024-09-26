@@ -58,25 +58,23 @@ func MakeArticleServer(d Dependencies) ArticleServer {
 	}
 }
 
-func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (*pb.CreateArticleResponse, error) {
+func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest) (_ *pb.CreateArticleResponse, err error) {
 	ctx, span := s.tracer.Start(ctx, "server.Create")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	article := articleFromPB(req.GetArticle())
 
 	if err := s.cmd.Create(ctx, article); err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
@@ -85,9 +83,10 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	}, nil
 }
 
-func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (*emptypb.Empty, error) {
+func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest) (_ *emptypb.Empty, err error) {
 	ctx, span := s.tracer.Start(ctx, "server.Delete")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
@@ -95,27 +94,25 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 	id := req.GetId()
 
 	if err := s.cmd.Delete(ctx, id); err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	return &emptypb.Empty{}, nil
 }
 
-func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (*emptypb.Empty, error) {
+func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest) (_ *emptypb.Empty, err error) {
 	ctx, span := s.tracer.Start(ctx, "server.Update")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
@@ -123,34 +120,31 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 	article := articleFromPB(req.GetArticle())
 
 	if err := s.cmd.Update(ctx, article); err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	return &emptypb.Empty{}, nil
 }
 
-func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.GetArticleResponse, error) {
+func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (_ *pb.GetArticleResponse, err error) {
 	ctx, span := s.tracer.Start(ctx, "server.Get")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
 	article, err := s.query.Get(ctx, req.GetId())
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, status.Errorf(codes.Internal, "Failed to get article: %v", err)
 	}
 
@@ -166,13 +160,13 @@ func (s ArticleServer) Get(ctx context.Context, req *pb.GetArticleRequest) (*pb.
 	}, err
 }
 
-func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleService_GetStreamServer) error {
+func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleService_GetStreamServer) (err error) {
 	ctx, span := s.tracer.Start(stream.Context(), "server.GetStream")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	articles, err := s.query.GetMultiple(ctx, req.GetOffset(), req.GetLimit())
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
@@ -181,24 +175,27 @@ func (s ArticleServer) GetStream(req *pb.GetArticlesRequest, stream pb.ArticleSe
 		case <-ctx.Done():
 			return nil
 		default:
-			_, span := s.tracer.Start(stream.Context(), "server.GetStream send")
+			err = func() error {
+				_, span := s.tracer.Start(stream.Context(), "server.GetStream send")
+				defer span.End()
+				defer tracing.SetSpanErr(span, err)
 
-			article := pb.Article{
-				Id:        v.Id,
-				UserId:    v.UserId,
-				Title:     v.Title,
-				Body:      v.Body,
-				CreatedAt: timestamppb.New(v.CreatedAt),
-				UpdatedAt: timestamppb.New(v.UpdatedAt),
-			}
+				article := pb.Article{
+					Id:        v.Id,
+					UserId:    v.UserId,
+					Title:     v.Title,
+					Body:      v.Body,
+					CreatedAt: timestamppb.New(v.CreatedAt),
+					UpdatedAt: timestamppb.New(v.UpdatedAt),
+				}
 
-			if err := stream.Send(&article); err != nil {
-				tracing.SetSpanErr(span, err)
-				span.End()
+				return stream.Send(&article)
+			}()
+			if err != nil {
 				return err
 			}
-			span.End()
 		}
+
 	}
 	return nil
 }

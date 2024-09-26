@@ -14,40 +14,38 @@ func (db Redis) Close() error {
 	return db.redis.Close()
 }
 
-func (db Redis) Get(ctx context.Context, id string) (entity.Article, error) {
+func (db Redis) Get(ctx context.Context, id string) (_ entity.Article, err error) {
 	ctx, span := db.tracer.Start(ctx, "redis.Get")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	id = addPrefix(articlesPrefix, id)
 	var data redisArticle
 
 	cmd := db.redis.HGetAll(ctx, id)
 	if err := scan(cmd, &data); err != nil {
-		tracing.SetSpanErr(span, err)
 		return entity.Article{}, err
 	}
 
 	v, err := data.Article()
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return entity.Article{}, err
 	}
 	return v, nil
 }
 
-func (db Redis) GetMultiple(ctx context.Context, offset, limit string) ([]entity.Article, error) {
+func (db Redis) GetMultiple(ctx context.Context, offset, limit string) (_ []entity.Article, err error) {
 	ctx, span := db.tracer.Start(ctx, "redis.GetMultiple")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	off, err := str.ConvertToInt(offset)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 
 	count, err := str.ConvertToInt(limit)
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 
@@ -59,7 +57,6 @@ func (db Redis) GetMultiple(ctx context.Context, offset, limit string) ([]entity
 		Order:  "DESC",
 	}).Result()
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 
@@ -72,7 +69,6 @@ func (db Redis) GetMultiple(ctx context.Context, offset, limit string) ([]entity
 	}
 
 	if _, err := pipeline.Exec(ctx); err != nil {
-		tracing.SetSpanErr(span, err)
 		return nil, err
 	}
 
@@ -84,14 +80,11 @@ func (db Redis) GetMultiple(ctx context.Context, offset, limit string) ([]entity
 			if errors.Is(err, redis.Nil) {
 				continue
 			}
-
-			tracing.SetSpanErr(span, err)
 			return nil, err
 		}
 
 		article, err := data.Article()
 		if err != nil {
-			tracing.SetSpanErr(span, err)
 			return nil, err
 		}
 
@@ -101,13 +94,14 @@ func (db Redis) GetMultiple(ctx context.Context, offset, limit string) ([]entity
 	return articles, nil
 }
 
-func (db Redis) Create(ctx context.Context, article entity.Article) error {
+func (db Redis) Create(ctx context.Context, article entity.Article) (err error) {
 	ctx, span := db.tracer.Start(ctx, "redis.Create")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	prefixedArticleId := addPrefix(articlesPrefix, article.Id)
 
-	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err = db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		values := mapArticle(article)
 		pipe.HSet(ctx, prefixedArticleId, values)
 		pipe.SAdd(ctx, articlesPrefix, article.Id)
@@ -115,16 +109,16 @@ func (db Redis) Create(ctx context.Context, article entity.Article) error {
 		return nil
 	})
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	return nil
 }
 
-func (db Redis) Update(ctx context.Context, article entity.Article) error {
+func (db Redis) Update(ctx context.Context, article entity.Article) (err error) {
 	ctx, span := db.tracer.Start(ctx, "redis.Update")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
 	prefixedId := addPrefix(articlesPrefix, article.Id)
 	numOfKeys, err := db.redis.Exists(ctx, prefixedId).Result()
@@ -142,25 +136,24 @@ func (db Redis) Update(ctx context.Context, article entity.Article) error {
 		return nil
 	})
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
 	return nil
 }
 
-func (db Redis) Delete(ctx context.Context, id string) error {
+func (db Redis) Delete(ctx context.Context, id string) (err error) {
 	ctx, span := db.tracer.Start(ctx, "redis.Delete")
 	defer span.End()
+	defer tracing.SetSpanErr(span, err)
 
-	_, err := db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err = db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		userId, _ := pipe.HGet(ctx, addPrefix(articlesPrefix, id), "user_id").Result()
 		pipe.Del(ctx, addPrefix(articlesPrefix, id))
 		pipe.SRem(ctx, addPrefix(usersPrefix, userId), id)
 		return nil
 	})
 	if err != nil {
-		tracing.SetSpanErr(span, err)
 		return err
 	}
 
