@@ -66,16 +66,16 @@ func (s ArticleServer) Create(ctx context.Context, req *pb.CreateArticleRequest)
 	article := articleFromPB(req.GetArticle())
 
 	if err := s.cmd.Create(ctx, article); err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to create article: %v", err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to make article-created event: %v", err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to publish the article-created event: %v", err.Error())
 	}
 
 	return &pb.CreateArticleResponse{
@@ -94,16 +94,16 @@ func (s ArticleServer) Delete(ctx context.Context, req *pb.DeleteArticleRequest)
 	id := req.GetId()
 
 	if err := s.cmd.Delete(ctx, id); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to delete article: %v", err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleDeleted, id, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to make the article-deleted event: %v", err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to publish the article-deleted event: %v", err.Error())
 	}
 
 	return &emptypb.Empty{}, nil
@@ -120,16 +120,16 @@ func (s ArticleServer) Update(ctx context.Context, req *pb.UpdateArticleRequest)
 	article := articleFromPB(req.GetArticle())
 
 	if err := s.cmd.Update(ctx, article); err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to update article: %v", err.Error())
 	}
 
 	event, err := event.MakeEvent(event.ArticleAggregate, event.ArticleUpdated, article, tracing.ExtractMetadataFromContext(ctx))
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to make the article-updated event: %v", err.Error())
 	}
 
 	if err := s.broker.ResilientPublish(event); err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Failed to publish the article-updated event: %v", err.Error())
 	}
 
 	return &emptypb.Empty{}, nil
