@@ -42,14 +42,14 @@ func (db Redis) deleteAllArticlesBelongingToUser() event.HandlerFunc {
 			return
 		}
 
-		ids, err := db.redis.SMembers(ctx, addPrefix(usersPrefix, userId)).Result()
+		ids, err := db.client.SMembers(ctx, addPrefix(usersPrefix, userId)).Result()
 		if err != nil {
 			tracing.SetSpanErr(span, err)
 			db.logger.Log(ctx, "Failed to fetch user ids", "err", err, "event", e)
 			return
 		}
 
-		if _, err := db.redis.Del(ctx, ids...).Result(); err != nil {
+		if _, err := db.client.Del(ctx, ids...).Result(); err != nil {
 			tracing.SetSpanErr(span, err)
 			db.logger.Log(ctx, "Failed to delete articles", "err", err, "event", e)
 			return

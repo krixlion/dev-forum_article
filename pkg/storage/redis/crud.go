@@ -11,7 +11,7 @@ import (
 )
 
 func (db Redis) Close() error {
-	return db.redis.Close()
+	return db.client.Close()
 }
 
 func (db Redis) Get(ctx context.Context, id string) (_ entity.Article, err error) {
@@ -20,18 +20,18 @@ func (db Redis) Get(ctx context.Context, id string) (_ entity.Article, err error
 	defer tracing.SetSpanErr(span, err)
 
 	id = addPrefix(articlesPrefix, id)
-	var data redisArticle
+	var v redisArticle
 
-	cmd := db.redis.HGetAll(ctx, id)
-	if err := scan(cmd, &data); err != nil {
+	cmd := db.client.HGetAll(ctx, id)
+	if err := scan(cmd, &v); err != nil {
 		return entity.Article{}, err
 	}
 
-	v, err := data.Article()
+	article, err := v.Article()
 	if err != nil {
 		return entity.Article{}, err
 	}
-	return v, nil
+	return article, nil
 }
 
 func (db Redis) GetMultiple(ctx context.Context, offset, limit string) (_ []entity.Article, err error) {
@@ -49,7 +49,7 @@ func (db Redis) GetMultiple(ctx context.Context, offset, limit string) (_ []enti
 		return nil, err
 	}
 
-	ids, err := db.redis.Sort(ctx, articlesPrefix, &redis.Sort{
+	ids, err := db.client.Sort(ctx, articlesPrefix, &redis.Sort{
 		By:     addPrefix(articlesPrefix, "*->title"),
 		Offset: int64(off),
 		Count:  int64(count),
@@ -61,7 +61,7 @@ func (db Redis) GetMultiple(ctx context.Context, offset, limit string) (_ []enti
 	}
 
 	commands := make([]*redis.MapStringStringCmd, 0, len(ids))
-	pipeline := db.redis.Pipeline()
+	pipeline := db.client.Pipeline()
 
 	for _, id := range ids {
 		id = addPrefix(articlesPrefix, id)
@@ -75,15 +75,15 @@ func (db Redis) GetMultiple(ctx context.Context, offset, limit string) (_ []enti
 	articles := make([]entity.Article, 0, len(ids))
 
 	for _, cmd := range commands {
-		var data redisArticle
-		if err := scan(cmd, &data); err != nil {
+		var v redisArticle
+		if err := scan(cmd, &v); err != nil {
 			if errors.Is(err, redis.Nil) {
 				continue
 			}
 			return nil, err
 		}
 
-		article, err := data.Article()
+		article, err := v.Article()
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +101,7 @@ func (db Redis) Create(ctx context.Context, article entity.Article) (err error) 
 
 	prefixedArticleId := addPrefix(articlesPrefix, article.Id)
 
-	_, err = db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err = db.client.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		values := mapArticle(article)
 		pipe.HSet(ctx, prefixedArticleId, values)
 		pipe.SAdd(ctx, articlesPrefix, article.Id)
@@ -121,7 +121,7 @@ func (db Redis) Update(ctx context.Context, article entity.Article) (err error) 
 	defer tracing.SetSpanErr(span, err)
 
 	prefixedId := addPrefix(articlesPrefix, article.Id)
-	numOfKeys, err := db.redis.Exists(ctx, prefixedId).Result()
+	numOfKeys, err := db.client.Exists(ctx, prefixedId).Result()
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (db Redis) Update(ctx context.Context, article entity.Article) (err error) 
 		return redis.Nil
 	}
 
-	_, err = db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err = db.client.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		values := mapArticle(article)
 		pipe.HSet(ctx, prefixedId, values)
 		return nil
@@ -147,7 +147,7 @@ func (db Redis) Delete(ctx context.Context, id string) (err error) {
 	defer span.End()
 	defer tracing.SetSpanErr(span, err)
 
-	_, err = db.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err = db.client.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		userId, _ := pipe.HGet(ctx, addPrefix(articlesPrefix, id), "user_id").Result()
 		pipe.Del(ctx, addPrefix(articlesPrefix, id))
 		pipe.SRem(ctx, addPrefix(usersPrefix, userId), id)

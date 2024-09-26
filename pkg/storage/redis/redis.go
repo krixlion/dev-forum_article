@@ -20,7 +20,7 @@ const (
 )
 
 type Redis struct {
-	redis  *redis.Client
+	client *redis.Client
 	logger logging.Logger
 	tracer trace.Tracer
 }
@@ -50,12 +50,12 @@ func MakeDB(host, port, pass string, logger logging.Logger, tracer trace.Tracer)
 	}
 
 	return Redis{
-		redis:  rdb,
+		client: rdb,
 		logger: logger,
 		tracer: tracer,
 	}, nil
 }
 
 func (db Redis) Ping(ctx context.Context) error {
-	return db.redis.Ping(ctx).Err()
+	return db.client.Ping(ctx).Err()
 }
