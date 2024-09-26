@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"reflect"
 	"time"
 
 	"github.com/krixlion/dev_forum-lib/event"
@@ -45,7 +46,7 @@ func (db Eventstore) Consume(ctx context.Context, _ string, eType event.EventTyp
 					}
 				}
 
-				if isZero(e) {
+				if reflect.ValueOf(e).IsZero() {
 					continue
 				}
 
@@ -73,9 +74,4 @@ func parseEvent(subEvent *esdb.SubscriptionEvent) (event.Event, error) {
 	}
 
 	return e, nil
-}
-
-func isZero(e event.Event) bool {
-	// If all fields are zero values.
-	return e.AggregateId == "" && e.Body == nil && e.Timestamp == time.Time{} && e.Type == ""
 }
