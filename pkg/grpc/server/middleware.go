@@ -123,7 +123,7 @@ func (server ArticleServer) validateDelete(ctx context.Context, req *pb.DeleteAr
 
 	if _, err := server.query.Get(ctx, id); err != nil {
 		tracing.SetSpanErr(span, err)
-		// Do not let user whether entity with provided ID existed before deleting or not.
+		// Do not let the user know whether the entity with provided ID existed before deleting or not.
 		return nil, nil
 	}
 
