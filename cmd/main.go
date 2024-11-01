@@ -141,7 +141,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	broker := broker.NewBroker(mq, logger, tracer)
 	dispatcher := dispatcher.NewDispatcher(20)
 
-	userConn, err := grpc.NewClient(os.Getenv("USER_SERVICE_SERVICE_HOST")+":"+os.Getenv("USER_SERVICE_SERVICE_PORT"),
+	userConn, err := grpc.NewClient(os.Getenv("USER_SERVICE_URL"),
 		grpc.WithTransportCredentials(clientCreds),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
@@ -150,7 +150,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	}
 	userClient := userPb.NewUserServiceClient(userConn)
 
-	authConn, err := grpc.NewClient(os.Getenv("AUTH_SERVICE_SERVICE_HOST")+":"+os.Getenv("AUTH_SERVICE_SERVICE_PORT"),
+	authConn, err := grpc.NewClient(os.Getenv("AUTH_SERVICE_URL"),
 		grpc.WithTransportCredentials(clientCreds),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
