@@ -76,7 +76,7 @@ func (s *ArticleService) Run(ctx context.Context) {
 
 func (s *ArticleService) eventProviders(ctx context.Context) ([]<-chan event.Event, error) {
 	eTypes := map[string]event.EventType{
-		"deleteAllArticlesBelongingToUser": event.UserDeleted,
+		"DeleteAllArticlesBelongingToUser": event.UserDeleted,
 		"SyncDeletedArticles":              event.ArticleDeleted,
 		"SyncCreatedArticles":              event.ArticleCreated,
 		"SyncUpdatedArticles":              event.ArticleUpdated,
