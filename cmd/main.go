@@ -54,7 +54,10 @@ func init() {
 }
 
 func main() {
-	env.Load(projectDir)
+	if err := env.Load(projectDir); err != nil {
+		logging.Log("Failed to read env file", "err", err)
+		return
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 

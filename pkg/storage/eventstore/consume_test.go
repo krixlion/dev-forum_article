@@ -85,7 +85,12 @@ func Test_Consume(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 			defer cancel()
 
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("DB.Consume():\n error = %v\n", err)
+				return
+			}
+
 			defer db.Close()
 
 			stream, err := db.Consume(ctx, "", tt.eType)

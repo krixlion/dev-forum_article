@@ -16,8 +16,11 @@ import (
 	"github.com/krixlion/dev_forum-lib/nulls"
 )
 
-func setUpDB() redis.Redis {
-	env.Load("app")
+func setUpDB() (redis.Redis, error) {
+	if err := env.Load("app"); err != nil {
+		return redis.Redis{}, err
+	}
+
 	port := os.Getenv("DB_READ_PORT")
 	host := os.Getenv("DB_READ_HOST")
 	pass := os.Getenv("DB_READ_PASS")
@@ -31,10 +34,10 @@ func setUpDB() redis.Redis {
 	defer cancel()
 
 	if err := db.Ping(ctx); err != nil {
-		log.Fatalf("Failed to ping to DB: %v", err)
+		return redis.Redis{}, err
 	}
 
-	return db
+	return db, nil
 }
 
 func Test_GetMultiple(t *testing.T) {
@@ -87,7 +90,12 @@ func Test_GetMultiple(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("DB.Consume():\n error = %v\n", err)
+				return
+			}
+
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
@@ -95,13 +103,12 @@ func Test_GetMultiple(t *testing.T) {
 
 			got, err := db.GetMultiple(ctx, tt.args.offset, tt.args.limit)
 			if err != nil {
-				t.Errorf("db.GetMultiple() error = %+v\n", err)
+				t.Errorf("Redis.GetMultiple() error = %v\n", err)
 				return
 			}
 
 			if !cmp.Equal(got, tt.want) {
-				t.Errorf("db.GetMultiple():\n got = %+v\n want = %+v\n %v", got, tt.want, cmp.Diff(got, tt.want))
-				return
+				t.Errorf("Redis.GetMultiple():\n got = %+v\n want = %+v\n %v", got, tt.want, cmp.Diff(got, tt.want))
 			}
 		})
 	}
@@ -130,7 +137,12 @@ func Test_Get(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("Redis.Get():\n error = %v", err)
+				return
+			}
+
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -138,12 +150,12 @@ func Test_Get(t *testing.T) {
 
 			got, err := db.Get(ctx, tt.arg)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("db.Get():\n error = %+v wantErr = %+v\n", err, tt.wantErr)
+				t.Errorf("Redis.Get():\n error = %v wantErr = %v\n", err, tt.wantErr)
 				return
 			}
 
 			if !cmp.Equal(got, tt.want) {
-				t.Errorf("db.Get():\n got = %+v\n want = %+v\n %v", got, tt.want, cmp.Diff(got, tt.want))
+				t.Errorf("Redis.Get():\n got = %+v\n want = %+v\n %v", got, tt.want, cmp.Diff(got, tt.want))
 			}
 		})
 	}
@@ -185,21 +197,26 @@ func Test_Create(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("")
+				return
+			}
+
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			err := db.Create(ctx, tt.arg)
+			err = db.Create(ctx, tt.arg)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("db.Create() error = %+v", err)
+				t.Errorf("db.Create() error = %v", err)
 				return
 			}
 
 			got, err := db.Get(ctx, tt.arg.Id)
 			if err != nil {
-				t.Errorf("db.Create() failed to db.Get() article:\n error = %+v\n wantErr = %+v\n", err, tt.wantErr)
+				t.Errorf("db.Create() failed to Redis.Get() article:\n error = %v\n wantErr = %v\n", err, tt.wantErr)
 				return
 			}
 
@@ -269,26 +286,31 @@ func Test_Update(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("Redis.Update():\n error = %v", err)
+				return
+			}
+
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			err := db.Update(ctx, tt.arg)
+			err = db.Update(ctx, tt.arg)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("db.Update():\n error = %+v wantErr = %+v\n", err, tt.wantErr)
+				t.Errorf("Redis.Update():\n error = %v wantErr = %v\n", err, tt.wantErr)
 				return
 			}
 
 			got, err := db.Get(ctx, tt.arg.Id)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("db.Update() failed to db.Get() article:\n error = %+v\n", err)
+				t.Errorf("Redis.Update() failed to Redis.Get() article:\n error = %v\n", err)
 				return
 			}
 
 			if !cmp.Equal(got, tt.arg) && !tt.wantErr {
-				t.Errorf("db.Update():\n got = %+v\n want = %+v\n %v", got, tt.arg, cmp.Diff(got, tt.arg))
+				t.Errorf("Redis.Update():\n got = %+v\n want = %+v\n %v", got, tt.arg, cmp.Diff(got, tt.arg))
 			}
 		})
 	}
@@ -310,21 +332,26 @@ func Test_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("Redis.Delete() error = %v", err)
+				return
+			}
+
 			defer db.Close()
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			err := db.Delete(ctx, tt.arg)
+			err = db.Delete(ctx, tt.arg)
 			if err != nil {
-				t.Errorf("db.Delete() error = %+v", err)
+				t.Errorf("Redis.Delete() error = %v", err)
 				return
 			}
 
 			_, err = db.Get(ctx, tt.arg)
 			if err == nil {
-				t.Errorf("db.Get() after db.Delete() returned nil error")
+				t.Errorf("Redis.Get() after Redis.Delete() returned nil error")
 			}
 		})
 	}

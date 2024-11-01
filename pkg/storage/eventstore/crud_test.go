@@ -3,7 +3,6 @@ package eventstore
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -19,8 +18,11 @@ import (
 	"github.com/krixlion/dev_forum-lib/tracing"
 )
 
-func setUpDB() Eventstore {
-	env.Load("app")
+func setUpDB() (Eventstore, error) {
+	if err := env.Load("app"); err != nil {
+		return Eventstore{}, err
+	}
+
 	port := os.Getenv("DB_WRITE_PORT")
 	host := os.Getenv("DB_WRITE_HOST")
 	pass := os.Getenv("DB_WRITE_PASS")
@@ -28,10 +30,10 @@ func setUpDB() Eventstore {
 
 	db, err := MakeDB(port, host, user, pass, nulls.NullLogger{}, nulls.NullTracer{})
 	if err != nil {
-		log.Fatalf("Failed to make DB, err: %v", err)
+		return Eventstore{}, err
 	}
 
-	return db
+	return db, nil
 }
 
 func Test_Create(t *testing.T) {
@@ -63,12 +65,19 @@ func Test_Create(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("Eventstore.Create():\n error = %v\n", err)
+				return
+			}
+
 			defer db.Close()
 
 			if err := db.Create(ctx, tt.args.article); (err != nil) != tt.wantErr {
 				t.Errorf("Eventstore.Create():\n error = %v\n wantErr = %v\n", err, tt.args.article)
+				return
 			}
+
 			opts := esdb.ReadStreamOptions{
 				Direction: esdb.Backwards,
 				From:      esdb.End{},
@@ -104,7 +113,6 @@ func Test_Create(t *testing.T) {
 
 			if !cmp.Equal(tt.args.article, got) {
 				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n %v\n", got, tt.args.article, cmp.Diff(got, tt.args.article))
-				return
 			}
 		})
 	}
@@ -139,11 +147,17 @@ func Test_Update(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("Eventstore.Update() error = %v\n", err)
+				return
+			}
+
 			defer db.Close()
 
 			if err := db.Update(ctx, tt.args.article); (err != nil) != tt.wantErr {
 				t.Errorf("Eventstore.Update() error = %v\n, wantErr %v\n", err, tt.wantErr)
+				return
 			}
 
 			opts := esdb.ReadStreamOptions{
@@ -181,7 +195,6 @@ func Test_Update(t *testing.T) {
 
 			if !cmp.Equal(tt.args.article, got) {
 				t.Errorf("Articles are not equal:\n got = %+v\n want = %+v\n %v\n", got, tt.args.article, cmp.Diff(got, tt.args.article))
-				return
 			}
 		})
 	}
@@ -212,7 +225,12 @@ func Test_Delete(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("Eventstore.Delete():\n error = %v\n", err)
+				return
+			}
+
 			defer db.Close()
 
 			if err := db.Delete(ctx, tt.args.id); (err != nil) != tt.wantErr {
@@ -255,7 +273,6 @@ func Test_Delete(t *testing.T) {
 
 			if !cmp.Equal(tt.args.id, got) {
 				t.Errorf("IDs are not equal:\n got = %+v\n want = %+v\n", got, tt.args.id)
-				return
 			}
 		})
 	}
@@ -281,17 +298,22 @@ func Test_getLastRevision(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			db := setUpDB()
+			db, err := setUpDB()
+			if err != nil {
+				t.Errorf("Eventstore.getLastRevision():\n error = %v\n", err)
+				return
+			}
+
 			defer db.Close()
 
 			if err := db.Create(ctx, tt.article); err != nil {
-				t.Errorf("Eventstore.getLastRevision() error during prep = %v", err)
+				t.Errorf("Eventstore.getLastRevision():\n error = %v\n", err)
 				return
 			}
 
 			want, err := event.MakeEvent(event.ArticleAggregate, event.ArticleCreated, tt.article, tracing.ExtractMetadataFromContext(ctx))
 			if err != nil {
-				t.Errorf("Eventstore.getLastRevision() error during prep = %v", err)
+				t.Errorf("Eventstore.getLastRevision():\n error = %v\n", err)
 				return
 			}
 
@@ -303,7 +325,7 @@ func Test_getLastRevision(t *testing.T) {
 
 			var got event.Event
 			if err = json.Unmarshal(resEvent.OriginalEvent().Data, &got); err != nil {
-				t.Errorf("Failed to unmarshal last revision event, error = %v", err)
+				t.Errorf("Eventstore.getLastRevision(): Failed to unmarshal last revision event:\n error = %v", err)
 				return
 			}
 
