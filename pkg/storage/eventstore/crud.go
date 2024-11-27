@@ -38,7 +38,7 @@ func (db Eventstore) Create(ctx context.Context, article entity.Article) (err er
 	}
 
 	streamID := addArticlesPrefix(article.Id)
-	if _, err := db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{}, eventData); err != nil {
+	if _, err := db.client.AppendToStream(ctx, streamID, esdb.AppendToStreamOptions{ExpectedRevision: esdb.NoStream{}}, eventData); err != nil {
 		return err
 	}
 
@@ -76,8 +76,7 @@ func (db Eventstore) Update(ctx context.Context, article entity.Article) (err er
 	}
 	streamID := addArticlesPrefix(article.Id)
 
-	_, err = db.client.AppendToStream(ctx, streamID, appendOpts, eventData)
-	if err != nil {
+	if _, err := db.client.AppendToStream(ctx, streamID, appendOpts, eventData); err != nil {
 		return err
 	}
 
