@@ -34,7 +34,7 @@ func Test_mapArticle(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			got := mapArticle(tt.arg)
 			if !cmp.Equal(got, tt.want) {
-				t.Errorf("Wrong output:\n got = %+v\n want = %+v\n", got, tt.want)
+				t.Errorf("mapArticle:\n got = %+v\n want = %+v\n", got, tt.want)
 			}
 		})
 	}
@@ -63,7 +63,7 @@ func Test_addPrefix(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			got := addPrefix(tt.args.prefix, tt.args.key)
 			if got != tt.want {
-				t.Errorf("Failed to add prefix:\n got = %+v\n want = %+v\n", got, tt.want)
+				t.Errorf("addPrefix:\n got = %+v\n want = %+v\n", got, tt.want)
 			}
 		})
 	}
