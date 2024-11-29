@@ -19,12 +19,8 @@ type Eventstore struct {
 	logger logging.Logger
 }
 
-func formatConnString(port, host, user, pass string) string {
-	return fmt.Sprintf("esdb://%s:%s@%s:%s?tls=false", user, pass, host, port)
-}
-
 func MakeDB(port, host, user, pass string, logger logging.Logger, tracer trace.Tracer) (Eventstore, error) {
-	url := formatConnString(port, host, user, pass)
+	url := fmt.Sprintf("esdb://%s:%s@%s:%s?tls=false", user, pass, host, port)
 	config, err := esdb.ParseConnectionString(url)
 	if err != nil {
 		return Eventstore{}, err
