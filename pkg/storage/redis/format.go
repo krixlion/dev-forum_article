@@ -56,12 +56,11 @@ func mapArticle(article entity.Article) map[string]string {
 
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
-		fType := field.Type()
 		fieldName := str.ToLowerSnakeCase(v.Type().Field(i).Name)
 
 		// Format time.Time fields to RFC3339.
 		// Redis-go doesn't support time.Time scanning.
-		if fType == reflect.TypeOf(time.Time{}) {
+		if field.Type() == reflect.TypeOf(time.Time{}) {
 			values[fieldName] = field.Interface().(time.Time).Format(time.RFC3339)
 			continue
 		}
