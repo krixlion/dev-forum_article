@@ -7,7 +7,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/go-cmp v0.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
-	github.com/krixlion/dev_forum-auth v0.0.0-20240803203340-bc377fce66a8
+	github.com/krixlion/dev_forum-auth v0.0.0-20241216172650-a6f3d4cc8a91
 	github.com/krixlion/dev_forum-lib v0.0.0-20241101143359-70fd1416b5bb
 	github.com/krixlion/dev_forum-user v0.0.0-20230428173550-97a13046bc8e
 	github.com/redis/go-redis/extra/redisotel/v9 v9.5.3

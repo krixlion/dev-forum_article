@@ -20,7 +20,7 @@ import (
 	"github.com/krixlion/dev_forum-auth/pkg/grpc/auth"
 	authPb "github.com/krixlion/dev_forum-auth/pkg/grpc/v1"
 	"github.com/krixlion/dev_forum-auth/pkg/tokens"
-	"github.com/krixlion/dev_forum-auth/pkg/tokens/validator"
+	"github.com/krixlion/dev_forum-auth/pkg/tokens/parser"
 	"github.com/krixlion/dev_forum-lib/cert"
 	"github.com/krixlion/dev_forum-lib/env"
 	"github.com/krixlion/dev_forum-lib/event/broker"
@@ -162,21 +162,21 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 	}
 	authClient := authPb.NewAuthServiceClient(authConn)
 
-	tokenValidator, err := validator.NewValidator(tokens.DefaultIssuer, validator.DefaultRefreshFunc(authClient, tracer), validator.WithLogger(logger))
+	tokenParser, err := parser.NewParser(tokens.DefaultIssuer, parser.DefaultRefreshFunc(authClient, tracer), parser.WithLogger(logger))
 	if err != nil {
 		return service.Dependencies{}, err
 	}
 
-	go tokenValidator.Run(ctx)
+	go tokenParser.Run(ctx)
 
-	dispatcher.Register(tokenValidator, query)
+	dispatcher.Register(tokenParser, query)
 
 	articleServer := server.MakeArticleServer(server.Dependencies{
 		Services: server.Services{
 			User: userClient,
 			Auth: authClient,
 		},
-		Validator:  tokenValidator,
+		Parser:     tokenParser,
 		Query:      query,
 		Cmd:        cmd,
 		Dispatcher: dispatcher,
@@ -192,7 +192,7 @@ func getServiceDependencies(ctx context.Context, serviceName string, isTLS bool)
 		),
 		grpc.ChainUnaryInterceptor(
 			grpc_recovery.UnaryServerInterceptor(),
-			selector.UnaryServerInterceptor(grpc_auth.UnaryServerInterceptor(auth.NewAuthFunc(tokenValidator, tracer)), articleServer.AuthMatcher()),
+			selector.UnaryServerInterceptor(grpc_auth.UnaryServerInterceptor(auth.NewAuthFunc(tokenParser, tracer)), articleServer.AuthMatcher()),
 			articleServer.ValidateRequestInterceptor(),
 		),
 	)

@@ -9,6 +9,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	pb "github.com/krixlion/dev_forum-article/pkg/grpc/v1"
+	"github.com/krixlion/dev_forum-auth/pkg/grpc/auth"
 	"github.com/krixlion/dev_forum-lib/tracing"
 	userPb "github.com/krixlion/dev_forum-user/pkg/grpc/v1"
 	"go.opentelemetry.io/otel/trace"
@@ -63,6 +64,12 @@ func (server ArticleServer) validateCreate(ctx context.Context, req *pb.CreateAr
 	}
 	article.Id = id.String()
 
+	token, err := auth.GetTokenFromCtx(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "Failed to parse the access token: %v", err)
+	}
+
+	article.UserId = token.UserId
 	// Escape html content.
 	article.Body = html.EscapeString(article.GetBody())
 	article.Title = html.EscapeString(article.GetTitle())

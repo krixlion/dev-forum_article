@@ -22,13 +22,13 @@ import (
 
 type ArticleServer struct {
 	pb.UnimplementedArticleServiceServer
-	services       Services
-	query          storage.Getter
-	cmd            storage.Writer
-	dispatcher     *dispatcher.Dispatcher
-	broker         event.Broker
-	tokenValidator tokens.Validator
-	tracer         trace.Tracer
+	services    Services
+	query       storage.Getter
+	cmd         storage.Writer
+	dispatcher  *dispatcher.Dispatcher
+	broker      event.Broker
+	tokenParser tokens.Parser
+	tracer      trace.Tracer
 }
 
 type Dependencies struct {
@@ -37,7 +37,7 @@ type Dependencies struct {
 	Cmd        storage.Writer
 	Dispatcher *dispatcher.Dispatcher
 	Broker     event.Broker
-	Validator  tokens.Validator
+	Parser     tokens.Parser
 	Tracer     trace.Tracer
 }
 
@@ -48,13 +48,13 @@ type Services struct {
 
 func MakeArticleServer(d Dependencies) ArticleServer {
 	return ArticleServer{
-		services:       d.Services,
-		query:          d.Query,
-		cmd:            d.Cmd,
-		broker:         d.Broker,
-		dispatcher:     d.Dispatcher,
-		tokenValidator: d.Validator,
-		tracer:         d.Tracer,
+		services:    d.Services,
+		query:       d.Query,
+		cmd:         d.Cmd,
+		broker:      d.Broker,
+		dispatcher:  d.Dispatcher,
+		tokenParser: d.Parser,
+		tracer:      d.Tracer,
 	}
 }
 
