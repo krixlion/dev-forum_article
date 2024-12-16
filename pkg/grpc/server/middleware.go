@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"html"
 	"slices"
 
@@ -70,7 +69,7 @@ func (server ArticleServer) validateCreate(ctx context.Context, req *pb.CreateAr
 
 	userResp, err := server.services.User.Get(ctx, &userPb.GetUserRequest{Id: article.GetUserId()})
 	if err != nil {
-		return nil, fmt.Errorf("failed to verify user id: %w", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "Failed to verify user id: %v", err)
 	}
 
 	if userResp.GetUser().GetId() == "" {
